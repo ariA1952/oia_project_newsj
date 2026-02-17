@@ -1,0 +1,214 @@
+.uploadPopupMainBox {
+    background-color: #fff;
+    /* width: 100%; */
+    max-width: 1100px;
+    /* height: 90%; */
+    /* max-height: 100%; */
+    margin: auto;
+    /* box-shadow: 0 0 8px #fff; */
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.upload-imagePreview-parent {
+    height: 95%;
+    /* display: flex; */
+    justify-content: center;
+    align-items: center;
+    /* padding: 16px; */
+    margin: 0px;
+    background-color: #e7e7e7;
+    overflow: auto;
+    text-align: center;
+}
+
+.upload-popup-close-icon {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #e7e7e7;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.upload-popup-close-icon:hover {
+    background-color: #bebebe;
+}
+
+.list-item-upload-chips:hover {
+    background-color: #fff !important;
+}
+
+
+.image-container-parent {
+    max-width: 100%;
+    max-height: 100%;
+    height: 100%;
+    width: 100%;
+    overflow: auto;
+    margin: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+}
+
+.image-container-parent>img {
+    max-width: 100%;
+    max-height: 100%;
+    overflow: auto;
+    margin: auto;
+}
+
+.upload-chip-label {
+    display: block;
+    text-overflow: ellipsis;
+    max-width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    font-size: 12px;
+}
+
+.upload-chip-label-2 {
+    display: block;
+    text-overflow: ellipsis;
+    /* width: 300px; */
+    white-space: nowrap;
+    overflow: hidden;
+    font-size: 12px;
+}
+
+.upload-component-preview-image {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+@media screen and (max-width:400px) {
+    .upload-chip-label-2 {
+        max-width: 300px;
+    }
+}
+
+#uppy-drag-drop-upload-component .uppy-Root button .uppy-DragDrop-inner {
+    padding: 0;
+}
+
+#uppy-drag-drop-upload-component .uppy-Root button .uppy-DragDrop-inner .uppy-DragDrop-arrow {
+    margin: 0;
+    height: 35px;
+    width: 35px;
+}
+
+/* Custom thumbnail */
+.uplaod-image-thumbnail-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.uplaod-image-thumbnail {
+    position: relative;
+    width: 140px;
+    height: 120px;
+    overflow: hidden;
+    border-radius: 8px;
+    transition: opacity 0.3s ease;
+}
+
+.pdf-viewer-component-display {
+    max-height: 500px;
+}
+
+@media screen and (max-width:1366px) {
+    .pdf-viewer-component-display {
+        max-height: 360px;
+    }
+}
+
+@media screen and (max-width:768px) {
+    .uplaod-image-thumbnail {
+        width: 100px;
+        height: 80px;
+    }
+
+    .pdf-viewer-component-display {
+        max-height: 300px;
+    }
+}
+
+.uplaod-image-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.uplaod-image-thumbnail:hover img {
+    opacity: 1;
+}
+
+.uplaod-image-thumbnail.thumbnail-selected img {
+    opacity: 1;
+}
+
+.uplaod-image-thumbnail-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.uplaod-image-thumbnail:hover .uplaod-image-thumbnail-overlay {
+    opacity: 1;
+}
+
+.uplaod-image-thumbnail.thumbnail-selected .uplaod-image-thumbnail-overlay {
+    opacity: 1;
+}
+
+.uplaod-image-thumbnail-delete-icon,
+.uplaod-image-thumbnail-preview-icon {
+    position: absolute;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.uplaod-image-thumbnail-image-text {
+    position: absolute;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    bottom: 5px;
+}
+
+.uplaod-image-thumbnail-delete-icon {
+    top: 5px;
+    right: 5px;
+}
+
+.uplaod-image-thumbnail-preview-icon {
+    transform: scale(0);
+}
+
+.uplaod-image-thumbnail:hover .uplaod-image-thumbnail-preview-icon {
+    transform: scale(1);
+}

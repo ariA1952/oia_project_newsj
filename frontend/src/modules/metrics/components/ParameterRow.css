@@ -1,0 +1,76 @@
+.parameter-row {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 2fr 1.5fr 2.5fr;
+    gap: 16px;
+    padding: 16px;
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    align-items: center;
+}
+
+.parameter-row--disabled {
+    opacity: 0.6;
+    background-color: #f9fafb;
+}
+
+.parameter-row__name {
+    font-weight: 500;
+    color: #374151;
+}
+
+.parameter-row__input input,
+.parameter-row__university select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.parameter-row__input input:focus,
+.parameter-row__university select:focus {
+    border-color: #2563eb;
+}
+
+.parameter-row__input input:disabled,
+.parameter-row__university select:disabled {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+}
+
+.parameter-row__input input.input-error {
+    border-color: #dc2626;
+}
+
+.parameter-row__error {
+    display: block;
+    font-size: 12px;
+    color: #dc2626;
+    margin-top: 4px;
+}
+
+.parameter-row__file-name {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.parameter-row__actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+@media (max-width: 1024px) {
+    .parameter-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .parameter-row__actions {
+        justify-content: flex-start;
+    }
+}
