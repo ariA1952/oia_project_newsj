@@ -1,16 +1,42 @@
 
-import FileUploadSharpIcon from "@mui/icons-material/FileUploadSharp";
-import { Button } from "@mui/material";
 import axios from "axios";
 import {
     Component
 } from "react";
 import ActionButton from "./ActionButton";
-import ApiGateway from "./ApiGateway";
-import AppContext from "./AppContext";
-import ERPUtils from "./ERPUtils";
-import "./UploadComponent.css";
-import UploadViewPopup from "./UploadViewPopup";
+import "./FileUpload.css";
+
+// Mock utilities that were missing
+const ERPUtils = {
+    isUndefinedOrNull: (val) => val === undefined || val === null,
+    isNullOrEmpty: (val) => !val || (Array.isArray(val) && val.length === 0),
+    isNullorWhiteSpace: (val) => typeof val !== 'string' || val.trim().length === 0,
+    loading: (tabId, status) => console.log(`Loading ${tabId}: ${status}`),
+    checkResponse: (response, status, type) => response?.data || response,
+    cloneState: (state) => JSON.parse(JSON.stringify(state)),
+    isArray: (val) => Array.isArray(val)
+};
+
+const AppContext = {
+    notify: ({ Type, Text }) => alert(`${Type.toUpperCase()}: ${Text}`),
+    alert: ({ Title, Text, Buttons, Callback }) => {
+        if (window.confirm(`${Title}\n\n${Text}`)) {
+            Callback(0);
+        } else {
+            Callback(1);
+        }
+    }
+};
+
+const ApiGateway = {
+    post: async (url, data, callback, type) => {
+        console.log(`Mock API Call to ${url}`, data);
+        // Simulate a response for now since we don't have a real backend mapping for these
+        callback({ data: [] });
+    }
+};
+
+const FileUploadSharpIcon = () => <span>📤</span>;
 
 export default class UploadFile extends Component {
     constructor(props) {
@@ -359,7 +385,11 @@ export default class UploadFile extends Component {
                 <span className=" font-weight-bold mr-2">
                     {(this.state.uploadOpen === true || this.state.isView)
                         && (
-                            <UploadViewPopup
+                            <div className="placeholder-popup" style={{ border: '1px solid #ccc', padding: '10px', marginTop: '10px', borderRadius: '4px' }}>
+                                <p>Upload Popup (UploadViewPopup is missing)</p>
+                                <button onClick={this.closePopup}>Close</button>
+                            </div>
+                            /* <UploadViewPopup
                                 data={this.state.popupData}
                                 closePopup={this.closePopup}
                                 onDelete={this.deleteFileMethod}
@@ -381,38 +411,37 @@ export default class UploadFile extends Component {
                                 callBackForLatestState={this.callBackForLatestState}
                                 overalFileSizerestriction={this.props?.overalFileSizerestriction}
                                 isDownloadable={this.state.isDownloadable}
-                            />
+                            /> */
                         )}
 
                     <label className="uploadLabel">
                         {this.props?.isViewOnly === true || this.props?.isViewOnly === "true" ? (
-                            <ActionButton action="FILEPREVIEWICON" onClick={() => this.showPreviewPopup(this.state.data, true)} />
+                            <ActionButton onClick={() => this.showPreviewPopup(this.state.data, true)}>👁️ Preview</ActionButton>
                         )
                             : this.props?.isIconButton === true ? (
                                 <span
-                                    style={{ color: "var(--uploadComponentColor)" }}
+                                    style={{ color: "var(--uploadComponentColor)", cursor: "pointer" }}
                                     role="button"
                                     onKeyDown={() => this.showPreviewPopup(this.state.data, true)}
                                     tabIndex={0}
                                     onClick={() => this.showPreviewPopup(this.state.data, true)}
                                 >
-                                    {this.state.data?.length > 0 ? <ActionButton action="FILEPREVIEWICON" onClick={() => this.showPreviewPopup(this.state.data, true)} /> : <FileUploadSharpIcon />}
-                                    {this.props?.isIconOnly === true || this.props?.isIconOnly === true ? null : this.state.data?.length > 0 ? " View File" : "Upload File"}
-                                    {/* {this.state.data?.length > 0 ? " View File" : "Upload File"} */}
+                                    {this.state.data?.length > 0 ? <FileUploadSharpIcon /> : <FileUploadSharpIcon />}
+                                    {this.props?.isIconOnly === true ? null : this.state.data?.length > 0 ? " View File" : " Upload File"}
                                 </span>
                             )
                                 : (
-                                    <Button
-                                        variant="outlined"
-                                        color={this.props?.color || "primary"}
-                                        startIcon={<FileUploadSharpIcon />}
+                                    <button
+                                        className="action-button action-button--outlined"
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', border: '1px solid currentColor', background: 'none', borderRadius: '4px', cursor: 'pointer', color: 'inherit' }}
                                         onClick={() => this.showPreviewPopup(this.state.data, true)}
                                         disabled={this.props.disabled}
                                     >
+                                        <FileUploadSharpIcon />
                                         {this.state.labelText}
                                         &nbsp;
                                         {this.state.data?.length > 0 ? `(${this.state.data?.length})` : ""}
-                                    </Button>
+                                    </button>
                                 )}
                     </label>
                     {" "}

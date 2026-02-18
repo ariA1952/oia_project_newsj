@@ -24,12 +24,14 @@ const DataEntry = () => {
     const [notification, setNotification] = useState(null);
 
     useEffect(() => {
-        if (context.academic_year_id && context.quarter_id && context.erp_campus_department_mapping_id) {
-            fetchExistingActivities();
-        }
+        fetchExistingActivities();
     }, [context.erp_campus_department_mapping_id, context.academic_year_id, context.quarter_id]);
 
     const fetchExistingActivities = async () => {
+        if (!context.academic_year_id || !context.quarter_id) {
+            setExistingActivities({});
+            return;
+        }
         setLoading(true);
         try {
             const data = await getCollaborationActivities({
@@ -226,47 +228,46 @@ const DataEntry = () => {
                 </div>
             </div>
 
-            {isContextSelected && (
-                <div className="data-entry__parameters">
-                    <h3 className="data-entry__section-title">Parameters</h3>
+            <div className="data-entry__parameters">
+                <h3 className="data-entry__section-title">Parameters</h3>
 
-                    {loading ? (
-                        <div className="data-entry__loader">
-                            <Loader size="large" />
+                {loading ? (
+                    <div className="data-entry__loader">
+                        <Loader size="large" />
+                    </div>
+                ) : (
+                    <>
+                        {!isContextSelected && (
+                            <div className="data-entry__info-alert" style={{ padding: '10px', backgroundColor: '#e3f2fd', color: '#0d47a1', borderRadius: '4px', marginBottom: '15px', fontSize: '14px' }}>
+                                ℹ️ Please select all context fields above to enable saving data.
+                            </div>
+                        )}
+                        <div className="data-entry__grid-header">
+                            <span>Parameter</span>
+                            <span>Value</span>
+                            <span>Partner University</span>
+                            <span>Document</span>
+                            <span>Actions</span>
                         </div>
-                    ) : (
-                        <>
-                            <div className="data-entry__grid-header">
-                                <span>Parameter</span>
-                                <span>Value</span>
-                                <span>Partner University</span>
-                                <span>Document</span>
-                                <span>Actions</span>
-                            </div>
 
-                            <div className="data-entry__parameter-list">
-                                {masterData.parameters.map((parameter) => (
-                                    <ParameterRow
-                                        key={parameter.parameter_id}
-                                        parameter={parameter}
-                                        existingData={existingActivities[parameter.parameter_id]}
-                                        universities={masterData.universities}
-                                        onSave={handleSaveActivity}
-                                        onDelete={handleDeleteActivity}
-                                        disabled={existingActivities[parameter.parameter_id]?.status === 'approved'}
-                                    />
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
-            )}
+                        <div className="data-entry__parameter-list">
+                            {masterData.parameters.map((parameter) => (
+                                <ParameterRow
+                                    key={parameter.parameter_id}
+                                    parameter={parameter}
+                                    existingData={existingActivities[parameter.parameter_id]}
+                                    universities={masterData.universities}
+                                    onSave={handleSaveActivity}
+                                    onDelete={handleDeleteActivity}
+                                    disabled={!isContextSelected || existingActivities[parameter.parameter_id]?.status === 'approved'}
+                                />
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
 
-            {!isContextSelected && (
-                <div className="data-entry__empty">
-                    <p>Please select Academic Year, Quarter, Campus, and Department to begin</p>
-                </div>
-            )}
+            {!isContextSelected && null}
 
             {notification && (
                 <Notification

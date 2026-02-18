@@ -12,7 +12,7 @@ const apiClient = axios.create({
 // Partner University APIs
 export const getPartnerUniversities = async (params = {}) => {
   try {
-    const response = await apiClient.get('/partner-university', { params });
+    const response = await apiClient.post('/partner-university/query', params);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -57,9 +57,7 @@ export const getCollaborationActivities = async (filters = {}) => {
       return acc;
     }, {});
 
-    const response = await apiClient.get('/collaboration-activity', {
-      params: cleanFilters,
-    });
+    const response = await apiClient.post('/collaboration-activity/query', cleanFilters);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -108,9 +106,7 @@ export const getAcademicYears = async () => {
 
 export const getQuarters = async (academicYearId) => {
   try {
-    const response = await apiClient.get('/quarters', {
-      params: { academic_year_id: academicYearId },
-    });
+    const response = await apiClient.post('/quarters', { academic_year_id: academicYearId });
     return response.data;
   } catch (error) {
     console.warn('Quarters endpoint not found');
@@ -130,9 +126,7 @@ export const getCampuses = async () => {
 
 export const getDepartments = async (campusId) => {
   try {
-    const response = await apiClient.get('/departments', {
-      params: { campus_id: campusId },
-    });
+    const response = await apiClient.post('/departments', { campus_id: campusId });
     return response.data;
   } catch (error) {
     console.warn('Departments endpoint not found');
