@@ -1,0 +1,16 @@
+
+/* Import the main styles from FileUpload.css if they exist, or define new ones here */
+
+.uploadLabel {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.uploadLabel:hover {
+    color: var(--primary-color, #1976d2);
+}
+
+/* Add any specific styles for the popup content here if needed */
