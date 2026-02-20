@@ -5,7 +5,7 @@ from backend.master_data_routers import master_data_router
 from backend.database import Base, engine
 
 # Create tables if they don't exist (optional, but good for local dev)
-# Base.metadata.create_all(bind=engine) 
+Base.metadata.create_all(bind=engine) 
 
 app = FastAPI(title="OIA Project API")
 
