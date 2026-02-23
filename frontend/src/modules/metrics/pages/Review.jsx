@@ -1,13 +1,26 @@
 import { useState, useEffect } from 'react';
+import { Send, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import FilterBar from '../components/FilterBar';
 import ActionButton from '../../../common/ActionButton';
 import Loader from '../../../common/Loader';
 import Notification from '../../../common/Notification';
+import { useAuth } from '../../../common/AuthContext';
 import useMetricsMasterData from '../hooks/useMetricsMasterData';
-import { getCollaborationActivities, updateCollaborationActivity } from '../services/metricsService';
+import {
+    getCollaborationActivities,
+    getPendingActivities,
+    getDraftActivities,
+    submitCollaborationActivity,
+    approveCollaborationActivity,
+    rejectCollaborationActivity
+} from '../services/metricsService';
 import './Review.css';
 
 const Review = () => {
+    const { user } = useAuth();
+    const userRole = user?.erp_users_type;
+    const mappingId = user?.erp_campus_department_mapping_id;
+
     const { masterData, loading: masterDataLoading } = useMetricsMasterData();
     const [filters, setFilters] = useState({
         academic_year_id: '',
@@ -23,20 +36,36 @@ const Review = () => {
     const [rejectRemarks, setRejectRemarks] = useState('');
 
     useEffect(() => {
-        if (filters.academic_year_id && filters.quarter_id) {
-            fetchActivities();
-        }
-    }, [filters]);
+        refreshData();
+    }, [filters, mappingId]);
 
-    const fetchActivities = async () => {
+    const refreshData = async () => {
         setLoading(true);
         try {
-            const data = await getCollaborationActivities(filters);
+            const queryParams = {
+                ...filters,
+                erp_campus_department_mapping_id: mappingId || undefined,
+            };
+
+            // If it's an HOD or Admin just looking for work, show SUBMITTED by default
+            // unless they specifically filtered for something else.
+            // But usually this page is for "Review", so we prioritize SUBMITTED.
+            const allActivities = await getCollaborationActivities(queryParams);
+
+            let data = allActivities;
+            if (userRole === 'FACULTY') {
+                // Faculty sees all their requests for tracking
+                data = allActivities;
+            } else if (userRole === 'HOD' || userRole === 'OIA_ADMIN') {
+                // In Review page, we primarily care about items needing action
+                data = allActivities.filter(a => a.status === 'SUBMITTED' || a.status === 'APPROVED');
+            }
+
             setActivities(data);
             groupActivitiesByParameter(data);
         } catch (error) {
             setNotification({
-                message: 'Failed to fetch activities',
+                message: `Failed to fetch activities`,
                 type: 'error',
             });
         } finally {
@@ -65,15 +94,31 @@ const Review = () => {
 
     const handleApprove = async (activityId) => {
         try {
-            await updateCollaborationActivity(activityId, { status: 'approved' });
+            await approveCollaborationActivity(activityId);
             setNotification({
                 message: 'Activity approved successfully',
                 type: 'success',
             });
-            fetchActivities();
+            refreshData();
         } catch (error) {
             setNotification({
                 message: 'Failed to approve activity',
+                type: 'error',
+            });
+        }
+    };
+
+    const handleRequestApproval = async (activityId) => {
+        try {
+            await submitCollaborationActivity(activityId);
+            setNotification({
+                message: 'Request sent to HOD/Admin for approval',
+                type: 'success',
+            });
+            refreshData();
+        } catch (error) {
+            setNotification({
+                message: 'Failed to send request',
                 type: 'error',
             });
         }
@@ -94,17 +139,14 @@ const Review = () => {
         }
 
         try {
-            await updateCollaborationActivity(rejectModal.activityId, {
-                status: 'rejected',
-                activity_data: { rejection_remarks: rejectRemarks },
-            });
+            await rejectCollaborationActivity(rejectModal.activityId);
             setNotification({
                 message: 'Activity rejected',
                 type: 'success',
             });
             setRejectModal({ show: false, activityId: null });
             setRejectRemarks('');
-            fetchActivities();
+            refreshData();
         } catch (error) {
             setNotification({
                 message: 'Failed to reject activity',
@@ -125,9 +167,13 @@ const Review = () => {
     return (
         <div className="review">
             <div className="review__header">
-                <h1 className="review__title">Review & Approval</h1>
+                <h1 className="review__title">
+                    {userRole === 'FACULTY' ? 'Track My Requests' : 'Review & Approval'}
+                </h1>
                 <p className="review__subtitle">
-                    Review and approve or reject collaboration activities
+                    {userRole === 'FACULTY'
+                        ? 'Monitor the status of your submitted collaboration activities'
+                        : 'Review and approve or reject incoming collaboration activities'}
                 </p>
             </div>
 
@@ -146,7 +192,12 @@ const Review = () => {
                 <div className="review__content">
                     {Object.keys(groupedActivities).length === 0 ? (
                         <div className="review__empty">
-                            <p>No activities found for the selected filters</p>
+                            <AlertCircle size={48} className="review__empty-icon" />
+                            <p>
+                                {userRole === 'FACULTY'
+                                    ? 'No submitted activities found'
+                                    : 'No pending activities found for review'}
+                            </p>
                         </div>
                     ) : (
                         Object.entries(groupedActivities).map(([paramId, paramActivities]) => (
@@ -181,27 +232,48 @@ const Review = () => {
                                                     </div>
                                                     <div className="review__activity-row">
                                                         <strong>Status:</strong>{' '}
-                                                        <span className={`review__status review__status--${activity.status || 'draft'}`}>
-                                                            {activity.status || 'draft'}
+                                                        <span className={`status-badge status-badge--${activity.status?.toLowerCase() || 'draft'}`}>
+                                                            {activity.status || 'DRAFT'}
                                                         </span>
                                                     </div>
                                                 </div>
 
                                                 <div className="review__activity-actions">
-                                                    <ActionButton
-                                                        variant="success"
-                                                        onClick={() => handleApprove(activity.activity_id)}
-                                                        disabled={activity.status === 'approved'}
-                                                    >
-                                                        Approve
-                                                    </ActionButton>
-                                                    <ActionButton
-                                                        variant="danger"
-                                                        onClick={() => handleRejectClick(activity.activity_id)}
-                                                        disabled={activity.status === 'rejected'}
-                                                    >
-                                                        Reject
-                                                    </ActionButton>
+                                                    {(userRole === 'HOD' || userRole === 'OIA_ADMIN') && activity.status === 'SUBMITTED' ? (
+                                                        <>
+                                                            <ActionButton
+                                                                variant="success"
+                                                                onClick={() => handleApprove(activity.activity_id)}
+                                                            >
+                                                                <CheckCircle size={16} style={{ marginRight: '8px' }} />
+                                                                Approve
+                                                            </ActionButton>
+                                                            <ActionButton
+                                                                variant="danger"
+                                                                onClick={() => handleRejectClick(activity.activity_id)}
+                                                            >
+                                                                <XCircle size={16} style={{ marginRight: '8px' }} />
+                                                                Reject
+                                                            </ActionButton>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            {userRole === 'FACULTY' && activity.status === 'DRAFT' ? (
+                                                                <ActionButton
+                                                                    variant="success"
+                                                                    onClick={() => handleRequestApproval(activity.activity_id)}
+                                                                >
+                                                                    <Send size={16} style={{ marginRight: '8px' }} />
+                                                                    Request Approval
+                                                                </ActionButton>
+                                                            ) : (
+                                                                <span className="action-label">
+                                                                    {activity.status === 'APPROVED' ? 'Finalized' :
+                                                                        activity.status === 'SUBMITTED' ? 'Awaiting Review' : 'Draft'}
+                                                                </span>
+                                                            )}
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}

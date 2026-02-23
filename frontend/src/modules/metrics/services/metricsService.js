@@ -49,7 +49,6 @@ export const updatePartnerUniversity = async (id, data) => {
 // Collaboration Activity APIs
 export const getCollaborationActivities = async (filters = {}) => {
   try {
-    // Remove empty string values - backend expects integers or nothing
     const cleanFilters = Object.entries(filters).reduce((acc, [key, value]) => {
       if (value !== '' && value !== null && value !== undefined) {
         acc[key] = value;
@@ -91,15 +90,59 @@ export const updateCollaborationActivity = async (id, data) => {
   }
 };
 
-// Master Data APIs - these endpoints will need to be added to backend or derived from existing data
-export const getAcademicYears = async () => {
+export const approveCollaborationActivity = async (id) => {
   try {
-    // Assuming there's an endpoint, otherwise we'll fetch from activities
-    const response = await apiClient.get('/academic-years');
+    const response = await apiClient.put(`/collaboration-activity/${id}/approve`);
     return response.data;
   } catch (error) {
-    // Fallback: extract unique academic years from activities
-    console.warn('Academic years endpoint not found, using fallback');
+    throw error.response?.data || error.message;
+  }
+};
+
+export const rejectCollaborationActivity = async (id) => {
+  try {
+    const response = await apiClient.put(`/collaboration-activity/${id}/reject`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+export const getPendingActivities = async () => {
+  try {
+    const response = await apiClient.get('/collaboration-activity/pending');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+export const submitCollaborationActivity = async (id) => {
+  try {
+    const response = await apiClient.put(`/collaboration-activity/${id}/submit`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+export const getDraftActivities = async (filters = {}) => {
+  try {
+    const cleanFilters = { ...filters, status: 'DRAFT' };
+    const response = await apiClient.post('/collaboration-activity/query', cleanFilters);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+// Master Data APIs - Updated to use POST as required by backend
+export const getAcademicYears = async () => {
+  try {
+    const response = await apiClient.post('/academic-years', {});
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch academic years');
     return [];
   }
 };
@@ -109,17 +152,17 @@ export const getQuarters = async (academicYearId) => {
     const response = await apiClient.post('/quarters', { academic_year_id: academicYearId });
     return response.data;
   } catch (error) {
-    console.warn('Quarters endpoint not found');
+    console.warn('Quarters endpoint failed');
     return [];
   }
 };
 
 export const getCampuses = async () => {
   try {
-    const response = await apiClient.get('/campuses');
+    const response = await apiClient.post('/campuses', {});
     return response.data;
   } catch (error) {
-    console.warn('Campuses endpoint not found');
+    console.warn('Campuses endpoint failed');
     return [];
   }
 };
@@ -129,19 +172,56 @@ export const getDepartments = async (campusId) => {
     const response = await apiClient.post('/departments', { campus_id: campusId });
     return response.data;
   } catch (error) {
-    console.warn('Departments endpoint not found');
+    console.warn('Departments endpoint failed');
     return [];
   }
 };
 
 export const getParameters = async () => {
   try {
-    const response = await apiClient.get('/parameters');
+    const response = await apiClient.post('/parameters', {});
     return response.data;
   } catch (error) {
-    console.warn('Parameters endpoint not found');
+    console.warn('Parameters endpoint failed');
     return [];
   }
 };
+
+export const getPartnerUniversitiesList = async () => {
+  try {
+    const response = await apiClient.post('/partner-university/query', { skip: 0, limit: 1000 });
+    return response.data;
+  } catch (error) {
+    console.warn('Failed to fetch universities');
+    return [];
+  }
+};
+
+// Auth API
+export const login = async (userId, password) => {
+  try {
+    const formData = new FormData();
+    formData.append('username', userId);
+    formData.append('password', password);
+
+    const response = await apiClient.post('/auth/login', formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+// Interceptor to add Token
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export default apiClient;

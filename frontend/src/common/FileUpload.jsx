@@ -3,7 +3,9 @@ import axios from "axios";
 import {
     Component
 } from "react";
+import { Upload, Eye, FileUp } from 'lucide-react';
 import ActionButton from "./ActionButton";
+import UploadViewPopup from "./UploadViewPopup";
 import "./FileUpload.css";
 
 // Mock utilities that were missing
@@ -35,8 +37,6 @@ const ApiGateway = {
         callback({ data: [] });
     }
 };
-
-const FileUploadSharpIcon = () => <span>📤</span>;
 
 export default class UploadFile extends Component {
     constructor(props) {
@@ -385,11 +385,7 @@ export default class UploadFile extends Component {
                 <span className=" font-weight-bold mr-2">
                     {(this.state.uploadOpen === true || this.state.isView)
                         && (
-                            <div className="placeholder-popup" style={{ border: '1px solid #ccc', padding: '10px', marginTop: '10px', borderRadius: '4px' }}>
-                                <p>Upload Popup (UploadViewPopup is missing)</p>
-                                <button onClick={this.closePopup}>Close</button>
-                            </div>
-                            /* <UploadViewPopup
+                            <UploadViewPopup
                                 data={this.state.popupData}
                                 closePopup={this.closePopup}
                                 onDelete={this.deleteFileMethod}
@@ -411,22 +407,24 @@ export default class UploadFile extends Component {
                                 callBackForLatestState={this.callBackForLatestState}
                                 overalFileSizerestriction={this.props?.overalFileSizerestriction}
                                 isDownloadable={this.state.isDownloadable}
-                            /> */
+                            />
                         )}
 
                     <label className="uploadLabel">
                         {this.props?.isViewOnly === true || this.props?.isViewOnly === "true" ? (
-                            <ActionButton onClick={() => this.showPreviewPopup(this.state.data, true)}>👁️ Preview</ActionButton>
+                            <ActionButton onClick={() => this.showPreviewPopup(this.state.data, true)} icon={<Eye size={16} />}>
+                                View File
+                            </ActionButton>
                         )
                             : this.props?.isIconButton === true ? (
                                 <span
-                                    style={{ color: "var(--uploadComponentColor)", cursor: "pointer" }}
+                                    style={{ color: "var(--uploadComponentColor)", cursor: "pointer", display: 'inline-flex', alignItems: 'center', gap: '8px' }}
                                     role="button"
                                     onKeyDown={() => this.showPreviewPopup(this.state.data, true)}
                                     tabIndex={0}
                                     onClick={() => this.showPreviewPopup(this.state.data, true)}
                                 >
-                                    {this.state.data?.length > 0 ? <FileUploadSharpIcon /> : <FileUploadSharpIcon />}
+                                    <FileUp size={18} />
                                     {this.props?.isIconOnly === true ? null : this.state.data?.length > 0 ? " View File" : " Upload File"}
                                 </span>
                             )
@@ -437,7 +435,7 @@ export default class UploadFile extends Component {
                                         onClick={() => this.showPreviewPopup(this.state.data, true)}
                                         disabled={this.props.disabled}
                                     >
-                                        <FileUploadSharpIcon />
+                                        <Upload size={18} />
                                         {this.state.labelText}
                                         &nbsp;
                                         {this.state.data?.length > 0 ? `(${this.state.data?.length})` : ""}
@@ -446,32 +444,6 @@ export default class UploadFile extends Component {
                     </label>
                     {" "}
                 </span>
-                {/* {isView
-        ? (
-          <UploadViewPopup
-            data={popupData}
-            closePopup={closePopup}
-            onDelete={deleteFileMethod}
-            openUploadWindow={openUploadWindow}
-            submitData={submitData}
-            isSubmitButton={isSubmitButton}
-            isViewOnly={props?.isViewOnly}
-            // Handlers
-            getFilesForPreview={getFilesForPreview}
-            setPreviewIndex={setPreviewIndex}
-            previewFile={previewFile}
-            fileNames={fileNames}
-            previewIndex={previewIndex}
-            // For uppy
-            handleUploadPopup={handleUploadPopup}
-            // previewFile={previewFile}
-            generateURLAndSubmit={generateURLAndSubmit}
-            isMulti={isMulti}
-            acceptedFormats={getKeyPathFromList(props.keyList)?.fileTypeList || ""}
-            filesizeAllowed={getKeyPathFromList(props.keyList)?.fileSizeInKB || ""}
-          />
-        )
-        : null} */}
             </span>
         );
     }

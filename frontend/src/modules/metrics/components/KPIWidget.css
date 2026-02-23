@@ -1,32 +1,50 @@
 .kpi-widget {
-    background-color: white;
-    border-radius: 8px;
+    background: white;
+    border-radius: 12px;
     padding: 24px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-sm);
     border-top: 4px solid #2563eb;
-    transition: box-shadow 0.3s ease;
+    /* Matches 'color' prop via style attribute */
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: default;
+}
+
+.kpi-widget--clickable {
+    cursor: pointer;
 }
 
 .kpi-widget:hover {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
 }
 
 .kpi-widget__header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
+    justify-content: space-between;
 }
 
 .kpi-widget__icon {
-    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    color: currentColor;
+    opacity: 0.8;
 }
 
 .kpi-widget__title {
-    font-size: 16px;
-    font-weight: 500;
-    color: #4b5563;
-    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .kpi-widget__value {

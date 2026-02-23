@@ -4,17 +4,23 @@ import HeatMap from '../components/HeatMap';
 import ActionButton from '../../../common/ActionButton';
 import Loader from '../../../common/Loader';
 import Notification from '../../../common/Notification';
+import { useAuth } from '../../../common/AuthContext';
 import useMetricsMasterData from '../hooks/useMetricsMasterData';
 import { getCollaborationActivities } from '../services/metricsService';
 import './Reports.css';
 
 const Reports = () => {
+    const { user } = useAuth();
+    const mappingId = user?.erp_campus_department_mapping_id;
+    const isAdmin = user?.erp_users_type === 'OIA_ADMIN';
+
     const { masterData, loading: masterDataLoading } = useMetricsMasterData();
     const [filters, setFilters] = useState({
         academic_year_id: '',
         quarter_id: '',
         campus_id: '',
         department_id: '',
+        status: 'APPROVED' // Default to approved for official reports
     });
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -29,14 +35,24 @@ const Reports = () => {
         if (filters.academic_year_id && filters.quarter_id) {
             fetchActivities();
         }
-    }, [filters]);
+    }, [filters, mappingId]);
 
     const fetchActivities = async () => {
         setLoading(true);
         try {
-            const data = await getCollaborationActivities(filters);
-            setActivities(data);
-            generateReportData(data);
+            const queryParams = {
+                ...filters,
+                erp_campus_department_mapping_id: mappingId || undefined,
+            };
+            const data = await getCollaborationActivities(queryParams);
+
+            // Filter by selected status (default APPROVED)
+            const filteredData = filters.status
+                ? data.filter(a => a.status === filters.status)
+                : data;
+
+            setActivities(filteredData);
+            generateReportData(filteredData);
         } catch (error) {
             setNotification({
                 message: 'Failed to fetch activities',
@@ -69,17 +85,17 @@ const Reports = () => {
         // Department comparison
         const departmentComparison = Object.values(
             data.reduce((acc, activity) => {
-                const deptId = activity.erp_campus_department_mapping_id; // Simplified
-                if (!acc[deptId]) {
-                    acc[deptId] = {
-                        department_id: deptId,
-                        department_name: getDepartmentName(deptId),
+                const mapId = activity.erp_campus_department_mapping_id;
+                if (!acc[mapId]) {
+                    acc[mapId] = {
+                        mapping_id: mapId,
+                        department_name: getDepartmentNameByMapping(mapId),
                         total: 0,
                         count: 0,
                     };
                 }
-                acc[deptId].total += activity.numeric_value || 0;
-                acc[deptId].count += 1;
+                acc[mapId].total += activity.numeric_value || 0;
+                acc[mapId].count += 1;
                 return acc;
             }, {})
         );
@@ -103,19 +119,21 @@ const Reports = () => {
         return param?.parameter_name || `Parameter ${paramId}`;
     };
 
-    const getDepartmentName = (deptId) => {
-        const dept = masterData.departments.find((d) => d.erp_department_id === deptId);
-        return dept?.department_name || `Department ${deptId}`;
+    const getDepartmentNameByMapping = (mapId) => {
+        // If the mapping exists in masterData, we can resolve it.
+        // For now, if masterData only has departments, we might need to show the ID or 
+        // find the department linked to this mapping.
+        // Assuming masterData has a way to resolve mappings to readable names.
+        return `Department (ID: ${mapId})`;
     };
 
     const handleDownloadExcel = () => {
-        // Basic CSV export (in production, use a library like xlsx)
         const csvContent = generateCSV();
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `metrics_report_${new Date().toISOString().split('T')[0]}.csv`;
+        link.download = `oia_report_${new Date().toISOString().split('T')[0]}.csv`;
         link.click();
         window.URL.revokeObjectURL(url);
 
@@ -130,7 +148,7 @@ const Reports = () => {
         reportData.parameterTotals.forEach((item) => {
             csv += `"${item.parameter_name}",${item.total},${item.count}\n`;
         });
-        csv += '\n\nDepartment,Total,Count\n';
+        csv += '\n\nDepartment Mapping,Total,Count\n';
         reportData.departmentComparison.forEach((item) => {
             csv += `"${item.department_name}",${item.total},${item.count}\n`;
         });
@@ -144,9 +162,13 @@ const Reports = () => {
     return (
         <div className="reports">
             <div className="reports__header">
-                <h1 className="reports__title">Reports</h1>
+                <h1 className="reports__title">
+                    {isAdmin ? 'OIA Strategic Reports' : 'Departmental Activity Report'}
+                </h1>
                 <p className="reports__subtitle">
-                    Visualize and export collaboration activity metrics
+                    {isAdmin
+                        ? 'Generate institutional reports on collaboration and research metrics'
+                        : 'Review and export activity data for your department'}
                 </p>
             </div>
 
@@ -165,30 +187,32 @@ const Reports = () => {
                 <>
                     <div className="reports__actions">
                         <ActionButton variant="primary" onClick={handleDownloadExcel}>
-                            📥 Download Excel
+                            📥 Download CSV
                         </ActionButton>
                         <ActionButton variant="secondary" onClick={fetchActivities}>
-                            🔄 Generate
+                            🔄 Refresh Data
                         </ActionButton>
+                        <span className="reports__status-info">
+                            Status: <strong style={{ color: 'var(--primary)' }}>{filters.status}</strong>
+                        </span>
                     </div>
 
-                    {/* Parameter-wise Totals */}
                     <div className="reports__section">
-                        <h3 className="reports__section-title">Parameter-wise Totals</h3>
+                        <h3 className="reports__section-title">Parameter Performance</h3>
                         <div className="reports__table-container">
                             <table className="reports__table">
                                 <thead>
                                     <tr>
                                         <th>Parameter</th>
-                                        <th>Total Value</th>
-                                        <th>Activity Count</th>
+                                        <th>Cumulative Total</th>
+                                        <th>Total Entries</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {reportData.parameterTotals.map((item) => (
                                         <tr key={item.parameter_id}>
                                             <td>{item.parameter_name}</td>
-                                            <td>{item.total.toFixed(2)}</td>
+                                            <td>{item.total.toLocaleString()}</td>
                                             <td>{item.count}</td>
                                         </tr>
                                     ))}
@@ -197,34 +221,34 @@ const Reports = () => {
                         </div>
                     </div>
 
-                    {/* Department Comparison */}
-                    <div className="reports__section">
-                        <h3 className="reports__section-title">Department Comparison</h3>
-                        <div className="reports__table-container">
-                            <table className="reports__table">
-                                <thead>
-                                    <tr>
-                                        <th>Department</th>
-                                        <th>Total Value</th>
-                                        <th>Activity Count</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {reportData.departmentComparison.map((item, index) => (
-                                        <tr key={index}>
-                                            <td>{item.department_name}</td>
-                                            <td>{item.total.toFixed(2)}</td>
-                                            <td>{item.count}</td>
+                    {isAdmin && (
+                        <div className="reports__section">
+                            <h3 className="reports__section-title">Department Comparison</h3>
+                            <div className="reports__table-container">
+                                <table className="reports__table">
+                                    <thead>
+                                        <tr>
+                                            <th>Department/Mapping</th>
+                                            <th>Total Value</th>
+                                            <th>Activity Count</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {reportData.departmentComparison.map((item, index) => (
+                                            <tr key={index}>
+                                                <td>{item.department_name}</td>
+                                                <td>{item.total.toLocaleString()}</td>
+                                                <td>{item.count}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Heatmap */}
                     <div className="reports__section">
-                        <h3 className="reports__section-title">Activity Heatmap</h3>
+                        <h3 className="reports__section-title">Activity Distribution</h3>
                         <HeatMap
                             data={reportData.heatmapData}
                             parameters={masterData.parameters}
@@ -234,7 +258,7 @@ const Reports = () => {
                 </>
             ) : (
                 <div className="reports__empty">
-                    <p>No data available. Please select filters and click Generate.</p>
+                    <p>No activity found for the selected criteria. Try adjusting the filters or selecting a different status.</p>
                 </div>
             )}
 

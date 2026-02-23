@@ -1,31 +1,40 @@
 import { useState, useEffect } from 'react';
+import { Info } from 'lucide-react';
 import ParameterRow from '../components/ParameterRow';
 import Loader from '../../../common/Loader';
 import Notification from '../../../common/Notification';
+import { useAuth } from '../../../common/AuthContext';
 import useMetricsMasterData from '../hooks/useMetricsMasterData';
 import {
     getCollaborationActivities,
     createCollaborationActivity,
     updateCollaborationActivity,
+    submitCollaborationActivity,
 } from '../services/metricsService';
 import './DataEntry.css';
 
 const DataEntry = () => {
-    const { masterData, loading: masterDataLoading } = useMetricsMasterData();
+    const { user } = useAuth();
+    const { masterData, loading: masterDataLoading, error: masterDataError } = useMetricsMasterData();
+    console.log('DataEntry: masterDataLoading:', masterDataLoading, 'masterData:', masterData);
     const [context, setContext] = useState({
         academic_year_id: '',
         quarter_id: '',
-        campus_id: '',
+        campus_id: user?.erp_campus_department_mapping_id ? '' : '', // Admins might still select
         department_id: '',
-        erp_campus_department_mapping_id: '',
     });
     const [existingActivities, setExistingActivities] = useState({});
     const [loading, setLoading] = useState(false);
     const [notification, setNotification] = useState(null);
 
+    // If faculty/HOD, lock the mapping to their own
+    const mappingId = user?.erp_campus_department_mapping_id;
+
     useEffect(() => {
-        fetchExistingActivities();
-    }, [context.erp_campus_department_mapping_id, context.academic_year_id, context.quarter_id]);
+        if (mappingId || (context.campus_id && context.department_id)) {
+            fetchExistingActivities();
+        }
+    }, [mappingId, context.academic_year_id, context.quarter_id, context.campus_id, context.department_id]);
 
     const fetchExistingActivities = async () => {
         if (!context.academic_year_id || !context.quarter_id) {
@@ -37,16 +46,21 @@ const DataEntry = () => {
             const data = await getCollaborationActivities({
                 academic_year_id: context.academic_year_id,
                 quarter_id: context.quarter_id,
-                campus_id: context.campus_id,
-                department_id: context.department_id,
+                erp_campus_department_mapping_id: mappingId || undefined,
             });
 
-            // Map activities by parameter_id for easy lookup
-            const mapped = {};
+            // Group activities by parameter_id (Normalize keys to strings for safe lookup)
+            const grouped = {};
+            console.log('DataEntry: Fetched activities:', data.length);
             data.forEach((activity) => {
-                mapped[activity.parameter_id] = activity;
+                const pid = String(activity.parameter_id);
+                if (!grouped[pid]) {
+                    grouped[pid] = [];
+                }
+                grouped[pid].push(activity);
             });
-            setExistingActivities(mapped);
+            console.log('DataEntry: Grouped activities:', Object.keys(grouped));
+            setExistingActivities(grouped);
         } catch (error) {
             setNotification({
                 message: 'Failed to fetch existing activities',
@@ -58,60 +72,55 @@ const DataEntry = () => {
     };
 
     const handleContextChange = (key, value) => {
-        const newContext = { ...context, [key]: value };
-
-        // When campus or department changes, find the mapping ID
-        if (key === 'campus_id' || key === 'department_id') {
-            // In real implementation, fetch the erp_campus_department_mapping_id
-            // For now, using a placeholder
-            if (newContext.campus_id && newContext.department_id) {
-                newContext.erp_campus_department_mapping_id = 1; // Placeholder
-            }
-        }
-
-        setContext(newContext);
+        setContext({ ...context, [key]: value });
     };
 
-    const handleSaveActivity = async (activityData) => {
+    const handleSaveActivity = async (activityData, activityId = null) => {
         if (!validateContext()) return;
-
-        const existingActivity = existingActivities[activityData.parameter_id];
 
         const payload = {
             parameter_id: activityData.parameter_id,
-            erp_campus_department_mapping_id: context.erp_campus_department_mapping_id,
+            erp_campus_department_mapping_id: mappingId || undefined,
             erp_academic_year_id: parseInt(context.academic_year_id),
             quarter_id: parseInt(context.quarter_id),
             university_id: activityData.university_id,
             numeric_value: activityData.numeric_value,
             activity_data: activityData.activity_data,
-            status: 'draft',
         };
 
         try {
-            if (existingActivity) {
-                // Update existing
-                await updateCollaborationActivity(existingActivity.activity_id, payload);
-                setNotification({
-                    message: 'Activity updated successfully',
-                    type: 'success',
-                });
+            if (activityId) {
+                await updateCollaborationActivity(activityId, payload);
+                setNotification({ message: 'Entry updated successfully', type: 'success' });
             } else {
-                // Create new
                 await createCollaborationActivity(payload);
-                setNotification({
-                    message: 'Activity created successfully',
-                    type: 'success',
-                });
+                setNotification({ message: 'Entry created successfully', type: 'success' });
             }
-
-            // Refresh activities
             fetchExistingActivities();
         } catch (error) {
             setNotification({
                 message: error.detail || 'Failed to save activity',
                 type: 'error',
             });
+        }
+    };
+
+    const handleSubmitForApproval = async (activityId) => {
+        try {
+            setLoading(true);
+            await submitCollaborationActivity(activityId);
+            setNotification({
+                message: 'Activity submitted for approval successfully',
+                type: 'success',
+            });
+            fetchExistingActivities();
+        } catch (error) {
+            setNotification({
+                message: error.detail || 'Failed to submit activity',
+                type: 'error',
+            });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -133,9 +142,9 @@ const DataEntry = () => {
     };
 
     const validateContext = () => {
-        if (!context.academic_year_id || !context.quarter_id || !context.campus_id || !context.department_id) {
+        if (!isContextSelected) {
             setNotification({
-                message: 'Please select Academic Year, Quarter, Campus, and Department',
+                message: 'Please select Academic Year and Quarter to proceed.',
                 type: 'warning',
             });
             return false;
@@ -144,19 +153,29 @@ const DataEntry = () => {
     };
 
     const isContextSelected =
-        context.academic_year_id && context.quarter_id && context.campus_id && context.department_id;
+        context.academic_year_id && context.quarter_id && (mappingId || (context.campus_id && context.department_id));
 
     if (masterDataLoading) {
         return <Loader fullscreen />;
     }
 
+    if (masterDataError) {
+        return <div className="data-entry__error">Error loading data: {masterDataError}</div>;
+    }
+
+    if (!masterData.parameters || masterData.parameters.length === 0) {
+        console.warn('DataEntry: No parameters found in masterData');
+    }
+
     return (
         <div className="data-entry">
             <div className="data-entry__header">
-                <h1 className="data-entry__title">Data Entry</h1>
+                <h1 className="data-entry__title">Data Entry Console</h1>
                 <p className="data-entry__subtitle">
                     Enter collaboration activity metrics for each parameter
                 </p>
+                {/* Visibility marker */}
+                <div style={{ height: '2px', background: '#2563eb', margin: '10px 0' }}></div>
             </div>
 
             <div className="data-entry__context">
@@ -194,42 +213,46 @@ const DataEntry = () => {
                         </select>
                     </div>
 
-                    <div className="data-entry__field">
-                        <label className="data-entry__label">Campus *</label>
-                        <select
-                            className="data-entry__select"
-                            value={context.campus_id}
-                            onChange={(e) => handleContextChange('campus_id', e.target.value)}
-                        >
-                            <option value="">Select Campus</option>
-                            {masterData.campuses.map((campus) => (
-                                <option key={campus.erp_campus_id} value={campus.erp_campus_id}>
-                                    {campus.campus_name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    {!mappingId && (
+                        <>
+                            <div className="data-entry__field">
+                                <label className="data-entry__label">Campus *</label>
+                                <select
+                                    className="data-entry__select"
+                                    value={context.campus_id}
+                                    onChange={(e) => handleContextChange('campus_id', e.target.value)}
+                                >
+                                    <option value="">Select Campus</option>
+                                    {masterData.campuses.map((campus) => (
+                                        <option key={campus.erp_campus_id} value={campus.erp_campus_id}>
+                                            {campus.campus_name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
-                    <div className="data-entry__field">
-                        <label className="data-entry__label">Department *</label>
-                        <select
-                            className="data-entry__select"
-                            value={context.department_id}
-                            onChange={(e) => handleContextChange('department_id', e.target.value)}
-                        >
-                            <option value="">Select Department</option>
-                            {masterData.departments.map((dept) => (
-                                <option key={dept.erp_department_id} value={dept.erp_department_id}>
-                                    {dept.department_name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                            <div className="data-entry__field">
+                                <label className="data-entry__label">Department *</label>
+                                <select
+                                    className="data-entry__select"
+                                    value={context.department_id}
+                                    onChange={(e) => handleContextChange('department_id', e.target.value)}
+                                >
+                                    <option value="">Select Department</option>
+                                    {masterData.departments.map((dept) => (
+                                        <option key={dept.erp_department_id} value={dept.erp_department_id}>
+                                            {dept.department_name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
             <div className="data-entry__parameters">
-                <h3 className="data-entry__section-title">Parameters</h3>
+                <h3 className="data-entry__section-title">Collaboration Parameters</h3>
 
                 {loading ? (
                     <div className="data-entry__loader">
@@ -237,37 +260,50 @@ const DataEntry = () => {
                     </div>
                 ) : (
                     <>
-                        {!isContextSelected && (
-                            <div className="data-entry__info-alert" style={{ padding: '10px', backgroundColor: '#e3f2fd', color: '#0d47a1', borderRadius: '4px', marginBottom: '15px', fontSize: '14px' }}>
-                                ℹ️ Please select all context fields above to enable saving data.
+                        {(!mappingId && !isContextSelected) && (
+                            <div className="data-entry__info-alert" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', backgroundColor: '#e3f2fd', color: '#0d47a1', borderRadius: '4px', marginBottom: '15px', fontSize: '14px' }}>
+                                <Info size={16} />
+                                Please select all context fields above to see and enter data.
                             </div>
                         )}
                         <div className="data-entry__grid-header">
                             <span>Parameter</span>
                             <span>Value</span>
                             <span>Partner University</span>
-                            <span>Document</span>
+                            <span>Status</span>
                             <span>Actions</span>
                         </div>
 
                         <div className="data-entry__parameter-list">
-                            {masterData.parameters.map((parameter) => (
-                                <ParameterRow
-                                    key={parameter.parameter_id}
-                                    parameter={parameter}
-                                    existingData={existingActivities[parameter.parameter_id]}
-                                    universities={masterData.universities}
-                                    onSave={handleSaveActivity}
-                                    onDelete={handleDeleteActivity}
-                                    disabled={!isContextSelected || existingActivities[parameter.parameter_id]?.status === 'approved'}
-                                />
-                            ))}
+                            {masterData.parameters.map((parameter, idx) => {
+                                const activities = existingActivities[String(parameter.parameter_id)] || [null];
+                                if (idx === 0) console.log('DataEntry: Param 1 activities:', activities);
+                                return activities.map((activity, index) => (
+                                    <ParameterRow
+                                        key={activity?.activity_id || `new-${parameter.parameter_id}-${index}`}
+                                        parameter={parameter}
+                                        existingData={activity}
+                                        universities={masterData.universities}
+                                        onSave={(data) => handleSaveActivity(data, activity?.activity_id)}
+                                        onDelete={handleDeleteActivity}
+                                        onSubmit={handleSubmitForApproval}
+                                        onAdd={() => {
+                                            const freshMapping = { ...existingActivities };
+                                            if (!freshMapping[parameter.parameter_id]) {
+                                                freshMapping[parameter.parameter_id] = [null];
+                                            }
+                                            freshMapping[parameter.parameter_id].push(null);
+                                            setExistingActivities(freshMapping);
+                                        }}
+                                        disabled={(!mappingId && !isContextSelected) || (activity?.status && activity?.status !== 'DRAFT' && activity?.status !== 'REJECTED')}
+                                        isContextSelected={isContextSelected}
+                                    />
+                                ));
+                            })}
                         </div>
                     </>
                 )}
             </div>
-
-            {!isContextSelected && null}
 
             {notification && (
                 <Notification

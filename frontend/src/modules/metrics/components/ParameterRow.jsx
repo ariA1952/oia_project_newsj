@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ActionButton from '../../../common/ActionButton';
 import FileUpload from '../../../common/FileUpload';
 import './ParameterRow.css';
@@ -9,7 +9,10 @@ const ParameterRow = ({
     universities = [],
     onSave,
     onDelete,
+    onSubmit,
+    onAdd,
     disabled = false,
+    isContextSelected = false,
 }) => {
     const [isEditing, setIsEditing] = useState(!existingData);
     const [formData, setFormData] = useState({
@@ -18,6 +21,23 @@ const ParameterRow = ({
         document_url: existingData?.activity_data?.document_url || '',
     });
     const [errors, setErrors] = useState({});
+
+    // Sync state when props change (fixes stale data on AY/Quarter switch)
+    useEffect(() => {
+        setFormData({
+            numeric_value: existingData?.numeric_value || '',
+            university_id: existingData?.university_id || '',
+            document_url: existingData?.activity_data?.document_url || '',
+        });
+        setIsEditing(!existingData);
+        setErrors({});
+    }, [existingData]);
+
+    const isSubmitted = existingData?.status === 'SUBMITTED';
+    const isApproved = existingData?.status === 'APPROVED';
+    const isRejected = existingData?.status === 'REJECTED';
+    const isDraft = existingData?.status === 'DRAFT' || !existingData;
+    const isEditable = isDraft || isRejected;
 
     const validate = () => {
         const newErrors = {};
@@ -60,8 +80,6 @@ const ParameterRow = ({
     };
 
     const handleFileSelect = (file) => {
-        // In real implementation, upload file and get URL
-        // For now, just set a placeholder URL
         if (file) {
             setFormData({ ...formData, document_url: `uploads/${file.name}` });
         } else {
@@ -70,7 +88,7 @@ const ParameterRow = ({
     };
 
     return (
-        <div className={`parameter-row ${disabled ? 'parameter-row--disabled' : ''}`}>
+        <div className={`parameter-row ${disabled && !isEditing ? 'parameter-row--disabled' : ''}`}>
             <div className="parameter-row__name">
                 {parameter.parameter_name || parameter.parameter_code}
             </div>
@@ -81,7 +99,7 @@ const ParameterRow = ({
                     step="0.01"
                     value={formData.numeric_value}
                     onChange={(e) => setFormData({ ...formData, numeric_value: e.target.value })}
-                    disabled={!isEditing || disabled}
+                    disabled={!isEditing || !isEditable || disabled}
                     className={errors.numeric_value ? 'input-error' : ''}
                     placeholder="Enter value"
                 />
@@ -94,7 +112,7 @@ const ParameterRow = ({
                 <select
                     value={formData.university_id}
                     onChange={(e) => setFormData({ ...formData, university_id: e.target.value })}
-                    disabled={!isEditing || disabled}
+                    disabled={!isEditing || !isEditable || disabled}
                 >
                     <option value="">Select Partner University</option>
                     {universities.map((uni) => (
@@ -105,17 +123,13 @@ const ParameterRow = ({
                 </select>
             </div>
 
-            <div className="parameter-row__file">
-                {isEditing && !disabled ? (
-                    <FileUpload
-                        onFileSelect={handleFileSelect}
-                        label="Upload"
-                        accept=".pdf,.doc,.docx,.xlsx"
-                    />
-                ) : (
-                    <span className="parameter-row__file-name">
-                        {formData.document_url || 'No file'}
+            <div className="parameter-row__status">
+                {existingData ? (
+                    <span className={`status-badge status-badge--${existingData.status.toLowerCase()}`}>
+                        {existingData.status}
                     </span>
+                ) : (
+                    <span className="status-badge status-badge--none">NEW</span>
                 )}
             </div>
 
@@ -123,7 +137,7 @@ const ParameterRow = ({
                 {isEditing && !disabled ? (
                     <>
                         <ActionButton variant="success" onClick={handleSave}>
-                            Save
+                            {existingData ? 'Save Changes' : 'Save as Draft'}
                         </ActionButton>
                         {existingData && (
                             <ActionButton variant="secondary" onClick={handleCancel}>
@@ -133,12 +147,23 @@ const ParameterRow = ({
                     </>
                 ) : (
                     <>
-                        <ActionButton variant="primary" onClick={() => setIsEditing(true)} disabled={disabled}>
-                            Edit
-                        </ActionButton>
-                        {existingData && (
-                            <ActionButton variant="danger" onClick={() => onDelete(existingData.activity_id)} disabled={disabled}>
-                                Delete
+                        {isEditable ? (
+                            <>
+                                <ActionButton variant="primary" onClick={() => setIsEditing(true)}>
+                                    {existingData ? 'Edit' : 'Create Activity'}
+                                </ActionButton>
+                                {existingData && (
+                                    <ActionButton variant="success" onClick={() => onSubmit(existingData.activity_id)}>
+                                        Request Approval
+                                    </ActionButton>
+                                )}
+                            </>
+                        ) : (
+                            <span className="action-label">Read Only</span>
+                        )}
+                        {isContextSelected && (
+                            <ActionButton variant="secondary" onClick={onAdd} title="Add another entry">
+                                +
                             </ActionButton>
                         )}
                     </>
