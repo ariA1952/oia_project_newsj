@@ -200,7 +200,7 @@ export const getPartnerUniversitiesList = async () => {
 // Auth API
 export const login = async (userId, password) => {
   try {
-    const formData = new FormData();
+    const formData = new URLSearchParams();
     formData.append('username', userId);
     formData.append('password', password);
 
