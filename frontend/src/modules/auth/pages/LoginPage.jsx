@@ -30,7 +30,15 @@ const LoginPage = () => {
             await login(userId, password);
             navigate(from, { replace: true });
         } catch (err) {
-            setError(err.detail || 'Invalid User ID or Password');
+            let errorMsg = 'Invalid User ID or Password';
+            if (err.detail) {
+                if (Array.isArray(err.detail)) {
+                    errorMsg = err.detail.map(e => `${e.loc?.length ? e.loc.join('.') : ''}: ${e.msg}`).join('\n');
+                } else if (typeof err.detail === 'string') {
+                    errorMsg = err.detail;
+                }
+            }
+            setError(errorMsg);
         } finally {
             setLoading(false);
         }

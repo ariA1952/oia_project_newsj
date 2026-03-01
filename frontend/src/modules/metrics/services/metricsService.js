@@ -201,17 +201,18 @@ export const getPartnerUniversitiesList = async () => {
 export const login = async (userId, password) => {
   try {
     const formData = new URLSearchParams();
+    formData.append('grant_type', 'password');
     formData.append('username', userId);
     formData.append('password', password);
 
-    const response = await apiClient.post('/auth/login', formData, {
+    const response = await apiClient.post('/auth/login', formData.toString(), {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
     });
     return response.data;
   } catch (error) {
-    throw error.response?.data || error.message;
+    throw error.response?.data || error;
   }
 };
 

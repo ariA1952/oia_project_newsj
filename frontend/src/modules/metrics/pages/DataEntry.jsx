@@ -276,7 +276,17 @@ const DataEntry = () => {
 
                         <div className="data-entry__parameter-list">
                             {masterData.parameters.map((parameter, idx) => {
-                                const activities = existingActivities[String(parameter.parameter_id)] || [null];
+                                let activities = existingActivities[String(parameter.parameter_id)] || [null];
+
+                                // NEW: For Admin and Faculty, hide APPROVED rows
+                                if (user?.erp_users_type === 'OIA_ADMIN' || user?.erp_users_type === 'FACULTY') {
+                                    activities = activities.filter(a => !a || a.status !== 'APPROVED');
+                                    // If we filtered everything out, show a blank row to allow new entries
+                                    if (activities.length === 0) {
+                                        activities = [null];
+                                    }
+                                }
+
                                 if (idx === 0) console.log('DataEntry: Param 1 activities:', activities);
                                 return activities.map((activity, index) => (
                                     <ParameterRow

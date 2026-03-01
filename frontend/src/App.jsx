@@ -26,11 +26,11 @@ const Sidebar = () => {
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { path: '/data-entry', label: 'Data Entry', icon: <ClipboardList size={20} /> },
+    { path: '/data-entry', label: 'Data Entry', icon: <ClipboardList size={20} />, roles: ['OIA_ADMIN', 'FACULTY'] },
     { path: '/review', label: 'Review', icon: <FileCheck size={20} /> },
     { path: '/reports', label: 'Reports', icon: <BarChart3 size={20} /> },
     { path: '/partners', label: 'Partners', icon: <Building2 size={20} /> },
-  ];
+  ].filter(item => !item.roles || item.roles.includes(user?.erp_users_type));
 
   return (
     <div className="sidebar">
