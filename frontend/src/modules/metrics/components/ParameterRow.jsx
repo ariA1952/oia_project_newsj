@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { AlertCircle } from 'lucide-react';
 import ActionButton from '../../../common/ActionButton';
 import FileUpload from '../../../common/FileUpload';
 import './ParameterRow.css';
@@ -169,6 +170,12 @@ const ParameterRow = ({
                     </>
                 )}
             </div>
+            {isRejected && existingData?.rejection_remarks && (
+                <div className="parameter-row__remarks">
+                    <AlertCircle size={14} />
+                    <span><strong>Reason:</strong> {existingData.rejection_remarks}</span>
+                </div>
+            )}
         </div>
     );
 };

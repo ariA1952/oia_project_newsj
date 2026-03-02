@@ -74,7 +74,22 @@ export const getCollaborationActivityById = async (id) => {
 
 export const createCollaborationActivity = async (data) => {
   try {
-    const response = await apiClient.post('/collaboration-activity', data);
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (key === 'activity_data' && typeof value === 'object') {
+          formData.append(key, JSON.stringify(value));
+        } else {
+          formData.append(key, value);
+        }
+      }
+    });
+
+    // Note: If a file/document were added in the future, it would be appended here
+
+    const response = await apiClient.post('/collaboration-activity', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -99,9 +114,13 @@ export const approveCollaborationActivity = async (id) => {
   }
 };
 
-export const rejectCollaborationActivity = async (id) => {
+export const rejectCollaborationActivity = async (id, remarks) => {
   try {
-    const response = await apiClient.put(`/collaboration-activity/${id}/reject`);
+    const formData = new URLSearchParams();
+    formData.append('remarks', remarks);
+    const response = await apiClient.put(`/collaboration-activity/${id}/reject`, formData.toString(), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -194,6 +213,16 @@ export const getPartnerUniversitiesList = async () => {
   } catch (error) {
     console.warn('Failed to fetch universities');
     return [];
+  }
+};
+
+// User Profile API
+export const getUserProfile = async () => {
+  try {
+    const response = await apiClient.get('/auth/me');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
   }
 };
 

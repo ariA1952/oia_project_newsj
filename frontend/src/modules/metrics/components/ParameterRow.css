@@ -58,6 +58,20 @@
     color: #6b7280;
 }
 
+.parameter-row__remarks {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background-color: #fff1f2;
+    border-left: 3px solid #f43f5e;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #9f1239;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .parameter-row__actions {
     display: flex;
     gap: 8px;

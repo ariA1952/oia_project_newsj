@@ -6,6 +6,7 @@ import Loader from '../../../common/Loader';
 import Notification from '../../../common/Notification';
 import { useAuth } from '../../../common/AuthContext';
 import useMetricsMasterData from '../hooks/useMetricsMasterData';
+import useUserProfile from '../hooks/useUserProfile';
 import {
     getCollaborationActivities,
     getPendingActivities,
@@ -22,9 +23,11 @@ const Review = () => {
     const mappingId = user?.erp_campus_department_mapping_id;
 
     const { masterData, loading: masterDataLoading } = useMetricsMasterData();
+    const { profile, loading: profileLoading } = useUserProfile();
     const [filters, setFilters] = useState({
         academic_year_id: '',
         quarter_id: '',
+        campus_id: '',
         department_id: '',
     });
     const [activities, setActivities] = useState([]);
@@ -34,6 +37,17 @@ const Review = () => {
     const [notification, setNotification] = useState(null);
     const [rejectModal, setRejectModal] = useState({ show: false, activityId: null });
     const [rejectRemarks, setRejectRemarks] = useState('');
+
+    // Auto-set filters from backend profile once loaded
+    useEffect(() => {
+        if (profileLoading) return;
+        setFilters(prev => ({
+            ...prev,
+            academic_year_id: profile.current_academic_year_id ? String(profile.current_academic_year_id) : prev.academic_year_id,
+            campus_id: profile.campus_id ? String(profile.campus_id) : prev.campus_id,
+            department_id: profile.dept_id ? String(profile.dept_id) : prev.department_id,
+        }));
+    }, [profileLoading]);
 
     useEffect(() => {
         refreshData();
@@ -57,8 +71,13 @@ const Review = () => {
                 // Faculty sees all their requests for tracking
                 data = allActivities;
             } else if (userRole === 'HOD' || userRole === 'OIA_ADMIN') {
-                // In Review page, we primarily care about items needing action
-                data = allActivities.filter(a => a.status === 'SUBMITTED' || a.status === 'APPROVED');
+                // HOD sees items needing action or already approved
+                // Admin sees everything that has been processed (SUBMITTED, APPROVED, REJECTED)
+                if (userRole === 'OIA_ADMIN') {
+                    data = allActivities.filter(a => a.status !== 'DRAFT');
+                } else {
+                    data = allActivities.filter(a => a.status === 'SUBMITTED' || a.status === 'APPROVED');
+                }
             }
 
             setActivities(data);
@@ -139,7 +158,7 @@ const Review = () => {
         }
 
         try {
-            await rejectCollaborationActivity(rejectModal.activityId);
+            await rejectCollaborationActivity(rejectModal.activityId, rejectRemarks);
             setNotification({
                 message: 'Activity rejected',
                 type: 'success',
@@ -236,6 +255,17 @@ const Review = () => {
                                                             {activity.status || 'DRAFT'}
                                                         </span>
                                                     </div>
+                                                    {activity.approved_user_id && (
+                                                        <div className="review__activity-row">
+                                                            <strong>Processed By:</strong> User ID {activity.approved_user_id}
+                                                        </div>
+                                                    )}
+                                                    {activity.status === 'REJECTED' && activity.rejection_remarks && (
+                                                        <div className="review__activity-remarks">
+                                                            <AlertCircle size={14} />
+                                                            <span><strong>Reason:</strong> {activity.rejection_remarks}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <div className="review__activity-actions">

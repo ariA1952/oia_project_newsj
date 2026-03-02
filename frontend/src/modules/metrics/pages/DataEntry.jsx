@@ -5,6 +5,7 @@ import Loader from '../../../common/Loader';
 import Notification from '../../../common/Notification';
 import { useAuth } from '../../../common/AuthContext';
 import useMetricsMasterData from '../hooks/useMetricsMasterData';
+import useUserProfile from '../hooks/useUserProfile';
 import {
     getCollaborationActivities,
     createCollaborationActivity,
@@ -16,11 +17,12 @@ import './DataEntry.css';
 const DataEntry = () => {
     const { user } = useAuth();
     const { masterData, loading: masterDataLoading, error: masterDataError } = useMetricsMasterData();
+    const { profile, loading: profileLoading } = useUserProfile();
     console.log('DataEntry: masterDataLoading:', masterDataLoading, 'masterData:', masterData);
     const [context, setContext] = useState({
         academic_year_id: '',
         quarter_id: '',
-        campus_id: user?.erp_campus_department_mapping_id ? '' : '', // Admins might still select
+        campus_id: '',
         department_id: '',
     });
     const [existingActivities, setExistingActivities] = useState({});
@@ -29,6 +31,17 @@ const DataEntry = () => {
 
     // If faculty/HOD, lock the mapping to their own
     const mappingId = user?.erp_campus_department_mapping_id;
+
+    // Auto-set context from backend profile once loaded
+    useEffect(() => {
+        if (profileLoading) return;
+        setContext(prev => ({
+            ...prev,
+            academic_year_id: profile.current_academic_year_id ? String(profile.current_academic_year_id) : prev.academic_year_id,
+            campus_id: profile.campus_id ? String(profile.campus_id) : prev.campus_id,
+            department_id: profile.dept_id ? String(profile.dept_id) : prev.department_id,
+        }));
+    }, [profileLoading]);
 
     useEffect(() => {
         if (mappingId || (context.campus_id && context.department_id)) {
@@ -80,7 +93,8 @@ const DataEntry = () => {
 
         const payload = {
             parameter_id: activityData.parameter_id,
-            erp_campus_department_mapping_id: mappingId || undefined,
+            campus_id: context.campus_id ? parseInt(context.campus_id) : undefined,
+            department_id: context.department_id ? parseInt(context.department_id) : undefined,
             erp_academic_year_id: parseInt(context.academic_year_id),
             quarter_id: parseInt(context.quarter_id),
             university_id: activityData.university_id,

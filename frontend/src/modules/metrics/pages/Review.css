@@ -150,6 +150,24 @@
     color: #991b1b;
 }
 
+.review__activity-remarks {
+    margin-top: 8px;
+    padding: 10px 12px;
+    background-color: #fff1f2;
+    border-left: 3px solid #f43f5e;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #9f1239;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.4;
+}
+
+.review__activity-remarks span {
+    flex: 1;
+}
+
 .review__activity-actions {
     display: flex;
     gap: 8px;
