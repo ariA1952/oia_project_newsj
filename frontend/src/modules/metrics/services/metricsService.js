@@ -117,12 +117,23 @@ export const createCollaborationActivity = async (data) => {
  */
 export const updateCollaborationActivity = async (id, data) => {
   try {
-    // If there is a file to upload we must use FormData (but the PUT endpoint
-    // currently only accepts JSON). For now we strip the document out and use JSON.
-    // When the backend update endpoint is upgraded to accept FormData this will
-    // automatically use it.
-    const { document, ...jsonData } = data;
-    const response = await apiClient.put(`/collaboration-activity/${id}`, jsonData);
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
+      if (key === 'document') {
+        if (value instanceof File) {
+          formData.append('document', value);
+        }
+      } else if (key === 'activity_data' && typeof value === 'object') {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, value);
+      }
+    });
+
+    const response = await apiClient.put(`/collaboration-activity/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;

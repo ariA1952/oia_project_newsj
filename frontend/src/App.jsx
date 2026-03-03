@@ -6,11 +6,10 @@ import {
   BarChart3,
   LogOut,
   User as UserIcon,
-  Bell,
-  Settings,
   Building2,
   FileText
-} from 'lucide-react';
+}
+  from 'lucide-react';
 import Dashboard from './modules/metrics/pages/Dashboard';
 import DataEntry from './modules/metrics/pages/DataEntry';
 import Review from './modules/metrics/pages/Review';
@@ -95,10 +94,7 @@ const Layout = ({ children }) => {
           <div className="header-search">
             {/* Search placeholder */}
           </div>
-          <div className="header-actions">
-            <button className="icon-btn"><Bell size={20} /></button>
-            <button className="icon-btn"><Settings size={20} /></button>
-          </div>
+
         </header>
         <div className="content-inner">
           {children}
