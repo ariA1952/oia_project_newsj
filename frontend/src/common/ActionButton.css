@@ -49,3 +49,12 @@
 .action-button--success:hover:not(:disabled) {
   background-color: #15803d;
 }
+
+.action-button--warning {
+  background-color: #d97706;
+  color: white;
+}
+
+.action-button--warning:hover:not(:disabled) {
+  background-color: #b45309;
+}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Info } from 'lucide-react';
+import { Info, ShieldOff } from 'lucide-react';
 import ParameterRow from '../components/ParameterRow';
 import Loader from '../../../common/Loader';
 import Notification from '../../../common/Notification';
@@ -16,9 +16,9 @@ import './DataEntry.css';
 
 const DataEntry = () => {
     const { user } = useAuth();
+    const isHOD = user?.erp_users_type === 'HOD';
     const { masterData, loading: masterDataLoading, error: masterDataError } = useMetricsMasterData();
     const { profile, loading: profileLoading } = useUserProfile();
-    console.log('DataEntry: masterDataLoading:', masterDataLoading, 'masterData:', masterData);
     const [context, setContext] = useState({
         academic_year_id: '',
         quarter_id: '',
@@ -91,15 +91,20 @@ const DataEntry = () => {
     const handleSaveActivity = async (activityData, activityId = null) => {
         if (!validateContext()) return;
 
+        // Build the full payload with all new fields
         const payload = {
             parameter_id: activityData.parameter_id,
             campus_id: context.campus_id ? parseInt(context.campus_id) : undefined,
             department_id: context.department_id ? parseInt(context.department_id) : undefined,
             erp_academic_year_id: parseInt(context.academic_year_id),
             quarter_id: parseInt(context.quarter_id),
-            university_id: activityData.university_id,
+            university_id: activityData.university_id || undefined,
             numeric_value: activityData.numeric_value,
-            activity_data: activityData.activity_data,
+            activity_title: activityData.activity_title || undefined,
+            start_date: activityData.start_date || undefined,
+            end_date: activityData.end_date || undefined,
+            activity_data: activityData.activity_data || undefined,
+            document: activityData.document || undefined,
         };
 
         try {
@@ -177,8 +182,23 @@ const DataEntry = () => {
         return <div className="data-entry__error">Error loading data: {masterDataError}</div>;
     }
 
-    if (!masterData.parameters || masterData.parameters.length === 0) {
-        console.warn('DataEntry: No parameters found in masterData');
+    // HOD cannot create/edit activities — show read-only view banner
+    if (isHOD) {
+        return (
+            <div className="data-entry">
+                <div className="data-entry__header">
+                    <h1 className="data-entry__title">Data Entry Console</h1>
+                    <p className="data-entry__subtitle">Collaboration activity metrics</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, color: '#c2410c', fontSize: '0.9rem', marginTop: 12 }}>
+                    <ShieldOff size={18} />
+                    <span>
+                        <strong>Access Restricted</strong> — HODs cannot create or edit activities.
+                        Please use the <strong>Review</strong> page to approve or reject submitted activities.
+                    </span>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -282,8 +302,7 @@ const DataEntry = () => {
                         )}
                         <div className="data-entry__grid-header">
                             <span>Parameter</span>
-                            <span>Value</span>
-                            <span>Partner University</span>
+                            <span>Activity Details</span>
                             <span>Status</span>
                             <span>Actions</span>
                         </div>
@@ -301,7 +320,6 @@ const DataEntry = () => {
                                     }
                                 }
 
-                                if (idx === 0) console.log('DataEntry: Param 1 activities:', activities);
                                 return activities.map((activity, index) => (
                                     <ParameterRow
                                         key={activity?.activity_id || `new-${parameter.parameter_id}-${index}`}
@@ -319,7 +337,7 @@ const DataEntry = () => {
                                             freshMapping[parameter.parameter_id].push(null);
                                             setExistingActivities(freshMapping);
                                         }}
-                                        disabled={(!mappingId && !isContextSelected) || (activity?.status && activity?.status !== 'DRAFT' && activity?.status !== 'REJECTED')}
+                                        disabled={(!mappingId && !isContextSelected) || (activity?.status && activity?.status !== 'DRAFT' && activity?.status !== 'REJECTED' && activity?.status !== 'CLARIFICATION_REQUESTED')}
                                         isContextSelected={isContextSelected}
                                     />
                                 ));

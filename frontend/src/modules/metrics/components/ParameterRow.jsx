@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { AlertCircle, FileText, ExternalLink, Upload, X } from 'lucide-react';
 import ActionButton from '../../../common/ActionButton';
-import FileUpload from '../../../common/FileUpload';
+import { useAuth } from '../../../common/AuthContext';
+import { getActivityDocumentUrl } from '../services/metricsService';
 import './ParameterRow.css';
 
 const ParameterRow = ({
@@ -15,20 +16,32 @@ const ParameterRow = ({
     disabled = false,
     isContextSelected = false,
 }) => {
+    const { user } = useAuth();
+    const isHOD = user?.erp_users_type === 'HOD';
+    const fileInputRef = useRef(null);
+
     const [isEditing, setIsEditing] = useState(!existingData);
     const [formData, setFormData] = useState({
+        activity_title: existingData?.activity_title || '',
         numeric_value: existingData?.numeric_value || '',
         university_id: existingData?.university_id || '',
-        document_url: existingData?.activity_data?.document_url || '',
+        start_date: existingData?.start_date || '',
+        end_date: existingData?.end_date || '',
+        activity_data: existingData?.activity_data?.remarks || '',
+        document: null,          // File object for new upload
     });
     const [errors, setErrors] = useState({});
 
-    // Sync state when props change (fixes stale data on AY/Quarter switch)
+    // Sync state when props change (new context selected, activity updated)
     useEffect(() => {
         setFormData({
+            activity_title: existingData?.activity_title || '',
             numeric_value: existingData?.numeric_value || '',
             university_id: existingData?.university_id || '',
-            document_url: existingData?.activity_data?.document_url || '',
+            start_date: existingData?.start_date || '',
+            end_date: existingData?.end_date || '',
+            activity_data: existingData?.activity_data?.remarks || '',
+            document: null,
         });
         setIsEditing(!existingData);
         setErrors({});
@@ -37,18 +50,21 @@ const ParameterRow = ({
     const isSubmitted = existingData?.status === 'SUBMITTED';
     const isApproved = existingData?.status === 'APPROVED';
     const isRejected = existingData?.status === 'REJECTED';
+    const isClarificationRequested = existingData?.status === 'CLARIFICATION_REQUESTED';
     const isDraft = existingData?.status === 'DRAFT' || !existingData;
-    const isEditable = isDraft || isRejected;
+    // DRAFT, REJECTED, or CLARIFICATION_REQUESTED are all editable (by faculty)
+    const isEditable = (isDraft || isRejected || isClarificationRequested) && !isHOD;
 
     const validate = () => {
         const newErrors = {};
-
-        if (!formData.numeric_value || formData.numeric_value === '') {
-            newErrors.numeric_value = 'Value is required';
+        if (!formData.numeric_value && formData.numeric_value !== 0) {
+            newErrors.numeric_value = 'Numeric value is required';
         } else if (parseFloat(formData.numeric_value) < 0) {
             newErrors.numeric_value = 'Value cannot be negative';
         }
-
+        if (formData.start_date && formData.end_date && formData.start_date > formData.end_date) {
+            newErrors.end_date = 'End date must be after start date';
+        }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -56,77 +72,211 @@ const ParameterRow = ({
     const handleSave = () => {
         if (!validate()) return;
 
-        onSave({
+        const payload = {
             parameter_id: parameter.parameter_id,
             numeric_value: parseFloat(formData.numeric_value),
             university_id: formData.university_id ? parseInt(formData.university_id) : null,
-            activity_data: {
-                document_url: formData.document_url,
-            },
-        });
+            activity_title: formData.activity_title || null,
+            start_date: formData.start_date || null,
+            end_date: formData.end_date || null,
+            activity_data: formData.activity_data ? { remarks: formData.activity_data } : null,
+            document: formData.document || null,
+        };
 
+        onSave(payload);
         setIsEditing(false);
     };
 
     const handleCancel = () => {
         if (existingData) {
             setFormData({
+                activity_title: existingData.activity_title || '',
                 numeric_value: existingData.numeric_value || '',
                 university_id: existingData.university_id || '',
-                document_url: existingData.activity_data?.document_url || '',
+                start_date: existingData.start_date || '',
+                end_date: existingData.end_date || '',
+                activity_data: existingData.activity_data?.remarks || '',
+                document: null,
             });
             setIsEditing(false);
         }
         setErrors({});
     };
 
-    const handleFileSelect = (file) => {
-        if (file) {
-            setFormData({ ...formData, document_url: `uploads/${file.name}` });
-        } else {
-            setFormData({ ...formData, document_url: '' });
-        }
+    const handleFileChange = (e) => {
+        const file = e.target.files[0] || null;
+        setFormData(prev => ({ ...prev, document: file }));
     };
+
+    const handleRemoveFile = () => {
+        setFormData(prev => ({ ...prev, document: null }));
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const documentUrl = existingData?.activity_id
+        ? getActivityDocumentUrl(existingData.activity_id)
+        : null;
+
+    const statusClass = existingData?.status?.toLowerCase().replace('_', '-') || 'none';
 
     return (
         <div className={`parameter-row ${disabled && !isEditing ? 'parameter-row--disabled' : ''}`}>
+
+            {/* ── Parameter Name ─────────────────────────────────── */}
             <div className="parameter-row__name">
                 {parameter.parameter_name || parameter.parameter_code}
-            </div>
-
-            <div className="parameter-row__input">
-                <input
-                    type="number"
-                    step="0.01"
-                    value={formData.numeric_value}
-                    onChange={(e) => setFormData({ ...formData, numeric_value: e.target.value })}
-                    disabled={!isEditing || !isEditable || disabled}
-                    className={errors.numeric_value ? 'input-error' : ''}
-                    placeholder="Enter value"
-                />
-                {errors.numeric_value && (
-                    <span className="parameter-row__error">{errors.numeric_value}</span>
+                {parameter.parameter_code && (
+                    <span className="parameter-row__code">{parameter.parameter_code}</span>
                 )}
             </div>
 
-            <div className="parameter-row__university">
-                <select
-                    value={formData.university_id}
-                    onChange={(e) => setFormData({ ...formData, university_id: e.target.value })}
-                    disabled={!isEditing || !isEditable || disabled}
-                >
-                    <option value="">Select Partner University</option>
-                    {universities.map((uni) => (
-                        <option key={uni.university_id} value={uni.university_id}>
-                            {uni.university_name}
-                        </option>
-                    ))}
-                </select>
+            {/* ── Editable Fields ────────────────────────────────── */}
+            <div className="parameter-row__fields">
+                {/* Activity Title */}
+                <div className="parameter-row__field">
+                    <label className="parameter-row__label">Title</label>
+                    <input
+                        type="text"
+                        className="parameter-row__input-text"
+                        placeholder="Activity title"
+                        value={formData.activity_title}
+                        onChange={(e) => setFormData(prev => ({ ...prev, activity_title: e.target.value }))}
+                        disabled={!isEditing || !isEditable || disabled}
+                    />
+                </div>
+
+                {/* Numeric Value */}
+                <div className="parameter-row__field">
+                    <label className="parameter-row__label">Value *</label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className={`parameter-row__input-number ${errors.numeric_value ? 'input-error' : ''}`}
+                        placeholder="0"
+                        value={formData.numeric_value}
+                        onChange={(e) => setFormData(prev => ({ ...prev, numeric_value: e.target.value }))}
+                        disabled={!isEditing || !isEditable || disabled}
+                    />
+                    {errors.numeric_value && (
+                        <span className="parameter-row__error">{errors.numeric_value}</span>
+                    )}
+                </div>
+
+                {/* Partner University */}
+                <div className="parameter-row__field">
+                    <label className="parameter-row__label">Partner University</label>
+                    <select
+                        className="parameter-row__select"
+                        value={formData.university_id}
+                        onChange={(e) => setFormData(prev => ({ ...prev, university_id: e.target.value }))}
+                        disabled={!isEditing || !isEditable || disabled}
+                    >
+                        <option value="">— None —</option>
+                        {universities.map((uni) => (
+                            <option key={uni.university_id} value={uni.university_id}>
+                                {uni.university_name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Start Date */}
+                <div className="parameter-row__field">
+                    <label className="parameter-row__label">Start Date</label>
+                    <input
+                        type="date"
+                        className="parameter-row__input-date"
+                        value={formData.start_date}
+                        onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
+                        disabled={!isEditing || !isEditable || disabled}
+                    />
+                </div>
+
+                {/* End Date */}
+                <div className="parameter-row__field">
+                    <label className="parameter-row__label">End Date</label>
+                    <input
+                        type="date"
+                        className={`parameter-row__input-date ${errors.end_date ? 'input-error' : ''}`}
+                        value={formData.end_date}
+                        onChange={(e) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
+                        disabled={!isEditing || !isEditable || disabled}
+                    />
+                    {errors.end_date && (
+                        <span className="parameter-row__error">{errors.end_date}</span>
+                    )}
+                </div>
+
+                {/* Remarks / Activity Data */}
+                <div className="parameter-row__field parameter-row__field--wide">
+                    <label className="parameter-row__label">Remarks / Notes</label>
+                    <textarea
+                        className="parameter-row__textarea"
+                        placeholder="Any additional details or notes..."
+                        rows={2}
+                        value={formData.activity_data}
+                        onChange={(e) => setFormData(prev => ({ ...prev, activity_data: e.target.value }))}
+                        disabled={!isEditing || !isEditable || disabled}
+                    />
+                </div>
+
+                {/* Document Upload (edit mode only, not HOD, not SUBMITTED/APPROVED) */}
+                {isEditing && isEditable && !disabled && (
+                    <div className="parameter-row__field parameter-row__field--wide">
+                        <label className="parameter-row__label">Upload Document (PDF / Word)</label>
+                        <div className="parameter-row__file-area">
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".pdf,.doc,.docx"
+                                onChange={handleFileChange}
+                                className="parameter-row__file-input"
+                                id={`file-${parameter.parameter_id}-${existingData?.activity_id || 'new'}`}
+                            />
+                            <label
+                                htmlFor={`file-${parameter.parameter_id}-${existingData?.activity_id || 'new'}`}
+                                className="parameter-row__file-label"
+                            >
+                                <Upload size={14} />
+                                {formData.document ? formData.document.name : 'Choose file…'}
+                            </label>
+                            {formData.document && (
+                                <button
+                                    type="button"
+                                    className="parameter-row__file-remove"
+                                    onClick={handleRemoveFile}
+                                    title="Remove file"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Existing Document Link (view mode) */}
+                {existingData?.document_path && !isEditing && (
+                    <div className="parameter-row__field">
+                        <label className="parameter-row__label">Document</label>
+                        <a
+                            href={documentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="parameter-row__doc-link"
+                        >
+                            <FileText size={13} />
+                            {existingData.document_path.split('/').pop() || 'View Document'}
+                            <ExternalLink size={11} style={{ marginLeft: 4 }} />
+                        </a>
+                    </div>
+                )}
             </div>
 
+            {/* ── Status Badge ───────────────────────────────────── */}
             <div className="parameter-row__status">
                 {existingData ? (
-                    <span className={`status-badge status-badge--${existingData.status.toLowerCase()}`}>
+                    <span className={`status-badge status-badge--${statusClass}`}>
                         {existingData.status}
                     </span>
                 ) : (
@@ -134,6 +284,18 @@ const ParameterRow = ({
                 )}
             </div>
 
+            {/* ── Clarification Remarks (Faculty sees this) ──────── */}
+            {(isRejected || isClarificationRequested) && existingData?.rejection_remarks && (
+                <div className={`parameter-row__remarks ${isClarificationRequested ? 'parameter-row__remarks--clarify' : ''}`}>
+                    <AlertCircle size={14} />
+                    <span>
+                        <strong>{isClarificationRequested ? 'Clarification needed:' : 'Reason:'}</strong>{' '}
+                        {existingData.rejection_remarks}
+                    </span>
+                </div>
+            )}
+
+            {/* ── Actions ────────────────────────────────────────── */}
             <div className="parameter-row__actions">
                 {isEditing && !disabled ? (
                     <>
@@ -148,34 +310,39 @@ const ParameterRow = ({
                     </>
                 ) : (
                     <>
-                        {isEditable ? (
+                        {isEditable && !isHOD && (
                             <>
                                 <ActionButton variant="primary" onClick={() => setIsEditing(true)}>
                                     {existingData ? 'Edit' : 'Create Activity'}
                                 </ActionButton>
-                                {existingData && (
+                                {existingData && isDraft && (
                                     <ActionButton variant="success" onClick={() => onSubmit(existingData.activity_id)}>
                                         Request Approval
                                     </ActionButton>
                                 )}
+                                {existingData && isClarificationRequested && (
+                                    <ActionButton variant="warning" onClick={() => onSubmit(existingData.activity_id)}>
+                                        Resubmit
+                                    </ActionButton>
+                                )}
                             </>
-                        ) : (
-                            <span className="action-label">Read Only</span>
                         )}
-                        {isContextSelected && (
-                            <ActionButton variant="secondary" onClick={onAdd} title="Add another entry">
+                        {!isEditable && !isHOD && existingData && (
+                            <span className="action-label">
+                                {isApproved ? 'Approved ✓' : isSubmitted ? 'Awaiting Review' : 'Read Only'}
+                            </span>
+                        )}
+                        {isHOD && (
+                            <span className="action-label">View Only</span>
+                        )}
+                        {isContextSelected && !isHOD && (
+                            <ActionButton variant="secondary" onClick={onAdd} title="Add another entry for this parameter">
                                 +
                             </ActionButton>
                         )}
                     </>
                 )}
             </div>
-            {isRejected && existingData?.rejection_remarks && (
-                <div className="parameter-row__remarks">
-                    <AlertCircle size={14} />
-                    <span><strong>Reason:</strong> {existingData.rejection_remarks}</span>
-                </div>
-            )}
         </div>
     );
 };

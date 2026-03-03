@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import partner_router, activity_router, auth_router
+from backend.routers import partner_router, activity_router, auth_router, mou_router
 from backend.master_data_routers import master_data_router
 from backend.database import Base, engine
 
@@ -25,6 +25,7 @@ app.add_middleware(
 
 app.include_router(partner_router)
 app.include_router(activity_router)
+app.include_router(mou_router)
 app.include_router(master_data_router)
 app.include_router(auth_router)
 

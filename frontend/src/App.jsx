@@ -8,13 +8,15 @@ import {
   User as UserIcon,
   Bell,
   Settings,
-  Building2
+  Building2,
+  FileText
 } from 'lucide-react';
 import Dashboard from './modules/metrics/pages/Dashboard';
 import DataEntry from './modules/metrics/pages/DataEntry';
 import Review from './modules/metrics/pages/Review';
 import Reports from './modules/metrics/pages/Reports';
 import Partners from './modules/metrics/pages/Partners';
+import MOU from './modules/metrics/pages/MOU';
 import LoginPage from './modules/auth/pages/LoginPage';
 import { AuthProvider, useAuth } from './common/AuthContext';
 import ProtectedRoute from './common/ProtectedRoute';
@@ -26,10 +28,21 @@ const Sidebar = () => {
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { path: '/data-entry', label: 'Data Entry', icon: <ClipboardList size={20} />, roles: ['OIA_ADMIN', 'FACULTY'] },
+    {
+      path: '/data-entry',
+      label: 'Data Entry',
+      icon: <ClipboardList size={20} />,
+      roles: ['OIA_ADMIN', 'FACULTY'],   // HOD cannot enter data
+    },
     { path: '/review', label: 'Review', icon: <FileCheck size={20} /> },
     { path: '/reports', label: 'Reports', icon: <BarChart3 size={20} /> },
     { path: '/partners', label: 'Partners', icon: <Building2 size={20} /> },
+    {
+      path: '/mou',
+      label: 'MOU',
+      icon: <FileText size={20} />,
+      // All roles can access (RBAC enforced inside the page)
+    },
   ].filter(item => !item.roles || item.roles.includes(user?.erp_users_type));
 
   return (
@@ -80,7 +93,7 @@ const Layout = ({ children }) => {
       <main className="main-content">
         <header className="content-header">
           <div className="header-search">
-            {/* Search removed as requested */}
+            {/* Search placeholder */}
           </div>
           <div className="header-actions">
             <button className="icon-btn"><Bell size={20} /></button>
@@ -135,6 +148,12 @@ function App() {
           <Route path="/partners" element={
             <ProtectedRoute>
               <Layout><Partners /></Layout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/mou" element={
+            <ProtectedRoute>
+              <Layout><MOU /></Layout>
             </ProtectedRoute>
           } />
 

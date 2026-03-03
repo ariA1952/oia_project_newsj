@@ -164,9 +164,37 @@
     line-height: 1.4;
 }
 
+.review__activity-remarks--clarify {
+    background-color: #fffbeb;
+    border-left-color: #f59e0b;
+    color: #92400e;
+}
+
 .review__activity-remarks span {
     flex: 1;
 }
+
+.review__doc-link {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 13px;
+    padding: 2px 8px;
+    background: #eff6ff;
+    border-radius: 4px;
+    margin-left: 4px;
+}
+
+.review__doc-link:hover {
+    background: #dbeafe;
+}
+
+.review__modal-desc {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 14px;
+}
+
 
 .review__activity-actions {
     display: flex;

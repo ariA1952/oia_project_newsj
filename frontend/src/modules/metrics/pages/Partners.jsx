@@ -29,7 +29,9 @@ const Partners = () => {
         country: '',
         university_ranking: '',
         website: '',
-        status: 'Active'
+        status: 'Active',
+        start_date: '',
+        end_date: '',
     });
 
     useEffect(() => {
@@ -66,7 +68,9 @@ const Partners = () => {
                 country: university.country || '',
                 university_ranking: university.university_ranking || '',
                 website: university.website || '',
-                status: university.status || 'Active'
+                status: university.status || 'Active',
+                start_date: university.start_date || '',
+                end_date: university.end_date || '',
             });
         } else {
             setEditingUniversity(null);
@@ -77,7 +81,9 @@ const Partners = () => {
                 country: '',
                 university_ranking: '',
                 website: '',
-                status: 'Active'
+                status: 'Active',
+                start_date: '',
+                end_date: '',
             });
         }
         setShowModal(true);
@@ -147,6 +153,7 @@ const Partners = () => {
                     <span>University Name</span>
                     <span>Location</span>
                     <span>Type / Rank</span>
+                    <span>Partnership Duration</span>
                     <span>Status</span>
                     {isAdmin && <span>Actions</span>}
                 </div>
@@ -177,6 +184,17 @@ const Partners = () => {
                                 <div className="partners__col-rank">
                                     <div className="partners__type">{uni.university_type || 'N/A'}</div>
                                     <div className="partners__rank">QS Rank: {uni.university_ranking || 'N/A'}</div>
+                                </div>
+                                <div className="partners__col-dates">
+                                    {uni.start_date || uni.end_date ? (
+                                        <div className="partners__dates">
+                                            <span>{uni.start_date || '—'}</span>
+                                            <span> → </span>
+                                            <span>{uni.end_date || '—'}</span>
+                                        </div>
+                                    ) : (
+                                        <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Not set</span>
+                                    )}
                                 </div>
                                 <div className="partners__col-status">
                                     <span className={`status-badge status-badge--${uni.status?.toLowerCase() || 'active'}`}>
@@ -269,6 +287,24 @@ const Partners = () => {
                                         <option value="Inactive">Inactive</option>
                                         <option value="Pending">Pending</option>
                                     </select>
+                                </div>
+                                <div className="partners__field">
+                                    <label>Partnership Start Date</label>
+                                    <input
+                                        type="date"
+                                        name="start_date"
+                                        value={formData.start_date}
+                                        onChange={handleInputChange}
+                                    />
+                                </div>
+                                <div className="partners__field">
+                                    <label>Partnership End Date</label>
+                                    <input
+                                        type="date"
+                                        name="end_date"
+                                        value={formData.end_date}
+                                        onChange={handleInputChange}
+                                    />
                                 </div>
                             </div>
                             <div className="partners__modal-actions">

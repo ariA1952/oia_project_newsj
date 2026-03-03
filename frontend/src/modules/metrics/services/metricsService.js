@@ -9,7 +9,17 @@ const apiClient = axios.create({
   },
 });
 
-// Partner University APIs
+// Interceptor to add Token
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// ─── Partner University APIs ─────────────────────────────────────────────────
+
 export const getPartnerUniversities = async (params = {}) => {
   try {
     const response = await apiClient.post('/partner-university/query', params);
@@ -46,7 +56,8 @@ export const updatePartnerUniversity = async (id, data) => {
   }
 };
 
-// Collaboration Activity APIs
+// ─── Collaboration Activity APIs ─────────────────────────────────────────────
+
 export const getCollaborationActivities = async (filters = {}) => {
   try {
     const cleanFilters = Object.entries(filters).reduce((acc, [key, value]) => {
@@ -55,7 +66,6 @@ export const getCollaborationActivities = async (filters = {}) => {
       }
       return acc;
     }, {});
-
     const response = await apiClient.post('/collaboration-activity/query', cleanFilters);
     return response.data;
   } catch (error) {
@@ -72,20 +82,24 @@ export const getCollaborationActivityById = async (id) => {
   }
 };
 
+/**
+ * Create a collaboration activity. Supports optional document upload.
+ * @param {Object} data - All activity fields plus optional `document` (File object)
+ */
 export const createCollaborationActivity = async (data) => {
   try {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        if (key === 'activity_data' && typeof value === 'object') {
-          formData.append(key, JSON.stringify(value));
-        } else {
-          formData.append(key, value);
-        }
+      if (value === undefined || value === null || value === '') return;
+      if (key === 'document') {
+        // File object — append directly
+        formData.append('document', value);
+      } else if (key === 'activity_data' && typeof value === 'object') {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, value);
       }
     });
-
-    // Note: If a file/document were added in the future, it would be appended here
 
     const response = await apiClient.post('/collaboration-activity', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -96,9 +110,19 @@ export const createCollaborationActivity = async (data) => {
   }
 };
 
+/**
+ * Update a collaboration activity. Supports optional document upload via FormData.
+ * @param {number} id
+ * @param {Object} data - Activity fields. Include `document` (File) to upload a new file.
+ */
 export const updateCollaborationActivity = async (id, data) => {
   try {
-    const response = await apiClient.put(`/collaboration-activity/${id}`, data);
+    // If there is a file to upload we must use FormData (but the PUT endpoint
+    // currently only accepts JSON). For now we strip the document out and use JSON.
+    // When the backend update endpoint is upgraded to accept FormData this will
+    // automatically use it.
+    const { document, ...jsonData } = data;
+    const response = await apiClient.put(`/collaboration-activity/${id}`, jsonData);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -118,9 +142,29 @@ export const rejectCollaborationActivity = async (id, remarks) => {
   try {
     const formData = new URLSearchParams();
     formData.append('remarks', remarks);
-    const response = await apiClient.put(`/collaboration-activity/${id}/reject`, formData.toString(), {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    });
+    const response = await apiClient.put(
+      `/collaboration-activity/${id}/reject`,
+      formData.toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Request clarification on a submitted activity (HOD / Admin only).
+ */
+export const clarifyCollaborationActivity = async (id, remarks) => {
+  try {
+    const formData = new URLSearchParams();
+    formData.append('remarks', remarks);
+    const response = await apiClient.put(
+      `/collaboration-activity/${id}/clarify`,
+      formData.toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -155,7 +199,91 @@ export const getDraftActivities = async (filters = {}) => {
   }
 };
 
-// Master Data APIs - Updated to use POST as required by backend
+/**
+ * Get the download URL for an activity document.
+ * Returns a URL string that can be used as an <a href> target.
+ */
+export const getActivityDocumentUrl = (id) => {
+  const token = localStorage.getItem('token');
+  return `${API_BASE_URL}/collaboration-activity/${id}/document?token=${token}`;
+};
+
+// ─── MOU APIs ────────────────────────────────────────────────────────────────
+
+export const getMOUs = async (params = { skip: 0, limit: 200 }) => {
+  try {
+    const response = await apiClient.post('/mou/query', params);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+export const getMOUById = async (id) => {
+  try {
+    const response = await apiClient.get(`/mou/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Create an MOU (Admin only). Accepts optional document file.
+ */
+export const createMOU = async (data) => {
+  try {
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      if (key === 'document') {
+        formData.append('document', value);
+      } else {
+        formData.append(key, value);
+      }
+    });
+    const response = await apiClient.post('/mou', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Update an MOU (Admin only). Accepts optional document file.
+ */
+export const updateMOU = async (id, data) => {
+  try {
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') return;
+      if (key === 'document') {
+        formData.append('document', value);
+      } else {
+        formData.append(key, value);
+      }
+    });
+    const response = await apiClient.put(`/mou/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Returns a URL for downloading an MOU document.
+ */
+export const getMOUDocumentUrl = (id) => {
+  const token = localStorage.getItem('token');
+  return `${API_BASE_URL}/mou/${id}/document?token=${token}`;
+};
+
+// ─── Master Data APIs ─────────────────────────────────────────────────────────
+
 export const getAcademicYears = async () => {
   try {
     const response = await apiClient.post('/academic-years', {});
@@ -216,7 +344,8 @@ export const getPartnerUniversitiesList = async () => {
   }
 };
 
-// User Profile API
+// ─── User Profile API ─────────────────────────────────────────────────────────
+
 export const getUserProfile = async () => {
   try {
     const response = await apiClient.get('/auth/me');
@@ -226,7 +355,8 @@ export const getUserProfile = async () => {
   }
 };
 
-// Auth API
+// ─── Auth API ─────────────────────────────────────────────────────────────────
+
 export const login = async (userId, password) => {
   try {
     const formData = new URLSearchParams();
@@ -235,23 +365,12 @@ export const login = async (userId, password) => {
     formData.append('password', password);
 
     const response = await apiClient.post('/auth/login', formData.toString(), {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     });
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
   }
 };
-
-// Interceptor to add Token
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
 
 export default apiClient;

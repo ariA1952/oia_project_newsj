@@ -191,3 +191,68 @@ body {
     margin-left: 0;
   }
 }
+
+/* Global Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-badge--draft {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.status-badge--submitted {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status-badge--approved {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge--rejected {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.status-badge--clarification-requested,
+.status-badge--clarification_requested {
+  background-color: #fef9c3;
+  color: #a16207;
+}
+
+.status-badge--active {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge--inactive {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.status-badge--expired {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.status-badge--pending {
+  background-color: #fef9c3;
+  color: #a16207;
+}
+
+.status-badge--none {
+  background-color: #f8fafc;
+  color: #94a3b8;
+  border: 1px dashed #e2e8f0;
+}
