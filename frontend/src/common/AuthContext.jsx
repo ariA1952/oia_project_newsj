@@ -1,6 +1,20 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
+/**
+ * Decode a JWT and return true if it is expired (or malformed).
+ * Works without any external library by reading the base64-encoded payload.
+ */
+function isTokenExpired(token) {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        // `exp` is in seconds; Date.now() is in milliseconds
+        return payload.exp < Math.floor(Date.now() / 1000);
+    } catch {
+        return true; // treat unreadable tokens as expired
+    }
+}
+
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
 // Determine if Keycloak is explicitly configured via env vars
@@ -26,14 +40,24 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
         // Restore session from localStorage on page refresh
+        // If the stored token is already expired, treat the user as logged out
         try {
+            const storedToken = localStorage.getItem('token');
+            if (!storedToken || isTokenExpired(storedToken)) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                return null;
+            }
             const stored = localStorage.getItem('user');
             return stored ? JSON.parse(stored) : null;
         } catch {
             return null;
         }
     });
-    const [token, setToken] = useState(() => localStorage.getItem('token') || null);
+    const [token, setToken] = useState(() => {
+        const storedToken = localStorage.getItem('token');
+        return storedToken && !isTokenExpired(storedToken) ? storedToken : null;
+    });
     const [loading, setLoading] = useState(USE_KEYCLOAK); // Only show loading if Keycloak needs to init
     const isRun = useRef(false);
     const keycloakRef = useRef(null);

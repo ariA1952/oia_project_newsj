@@ -18,6 +18,35 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+// Helper: check if a stored JWT is expired
+function isStoredTokenExpired() {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return true;
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp < Math.floor(Date.now() / 1000);
+  } catch {
+    return true;
+  }
+}
+
+// Interceptor to handle 401 Unauthorized (expired/invalid token)
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const is401 = error.response?.status === 401;
+    // Fallback: if no response (CORS blocked the 401), check token expiry directly
+    const isNetworkErrorWithExpiredToken = !error.response && isStoredTokenExpired();
+
+    if (is401 || isNetworkErrorWithExpiredToken) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // ─── Partner University APIs ─────────────────────────────────────────────────
 
 export const getPartnerUniversities = async (params = {}) => {
@@ -101,9 +130,7 @@ export const createCollaborationActivity = async (data) => {
       }
     });
 
-    const response = await apiClient.post('/collaboration-activity', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await apiClient.post('/collaboration-activity', formData);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -131,9 +158,7 @@ export const updateCollaborationActivity = async (id, data) => {
       }
     });
 
-    const response = await apiClient.put(`/collaboration-activity/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await apiClient.put(`/collaboration-activity/${id}`, formData);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -202,7 +227,14 @@ export const submitCollaborationActivity = async (id) => {
 
 export const getDraftActivities = async (filters = {}) => {
   try {
-    const cleanFilters = { ...filters, status: 'DRAFT' };
+    // Strip empty string values, then force status filter
+    const cleanFilters = Object.entries(filters).reduce((acc, [key, value]) => {
+      if (value !== '' && value !== null && value !== undefined) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {});
+    cleanFilters.status = 'DRAFT';
     const response = await apiClient.post('/collaboration-activity/query', cleanFilters);
     return response.data;
   } catch (error) {
