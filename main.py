@@ -44,12 +44,21 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     """Ensure CORS headers are present even on error responses (e.g. 401, 403).
     FastAPI's CORSMiddleware does not always add headers to responses raised
     via HTTPException, so we handle it explicitly here."""
+    print("HTTPException:", exc.detail)
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
         headers=_cors_headers(request),
     )
 
+'''@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    print("Unhandled Exception:", str(exc))
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error"},
+        headers=_cors_headers(request),
+    )'''
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
