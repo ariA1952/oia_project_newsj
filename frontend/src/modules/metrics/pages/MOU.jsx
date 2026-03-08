@@ -11,7 +11,6 @@ import useMetricsMasterData from '../hooks/useMetricsMasterData';
 import {
     getMOUs,
     createMOU,
-    updateMOU,
     getMOUDocumentUrl,
 } from '../services/metricsService';
 import './MOU.css';
@@ -252,14 +251,14 @@ const MOU = () => {
                                         )}
                                     </div>
 
-                                    {/* Actions (Admin only) */}
-                                    {isAdmin && (
+                                    {/* Actions (Admin only) - Disabled as backend update endpoint is not present */}
+                                    {/* {isAdmin && (
                                         <div className="mou__col mou__col--actions">
                                             <ActionButton variant="secondary" onClick={() => handleOpenModal(mou)}>
                                                 <Edit2 size={15} />
                                             </ActionButton>
                                         </div>
-                                    )}
+                                    )} */}
                                 </div>
                             ))
                         )}

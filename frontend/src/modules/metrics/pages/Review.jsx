@@ -10,8 +10,6 @@ import useMetricsMasterData from '../hooks/useMetricsMasterData';
 import useUserProfile from '../hooks/useUserProfile';
 import {
     getCollaborationActivities,
-    getPendingActivities,
-    getDraftActivities,
     submitCollaborationActivity,
     approveCollaborationActivity,
     rejectCollaborationActivity,

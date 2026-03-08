@@ -164,18 +164,6 @@ body {
   flex-direction: column;
 }
 
-.content-header {
-  height: var(--header-height);
-  background: var(--white);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 32px;
-  position: sticky;
-  top: 0;
-}
-
 .content-inner {
   padding: 24px;
   flex: 1;

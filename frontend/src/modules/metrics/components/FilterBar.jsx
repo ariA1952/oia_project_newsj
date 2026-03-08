@@ -33,11 +33,13 @@ const FilterBar = ({ filters, onChange, masterData, loading }) => {
                     disabled={loading}
                 >
                     <option value="">All Quarters</option>
-                    {masterData.quarters.map((quarter) => (
-                        <option key={quarter.quarter_id} value={quarter.quarter_id}>
-                            Q{quarter.quarter_number}
-                        </option>
-                    ))}
+                    {masterData.quarters
+                        .filter(quarter => !filters.academic_year_id || String(quarter.erp_academic_year_id) === String(filters.academic_year_id))
+                        .map((quarter) => (
+                            <option key={quarter.quarter_id} value={quarter.quarter_id}>
+                                Q{quarter.quarter_number}
+                            </option>
+                        ))}
                 </select>
             </div>
 

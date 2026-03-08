@@ -91,12 +91,6 @@ const Layout = ({ children }) => {
     <div className="app-layout">
       <Sidebar />
       <main className="main-content">
-        <header className="content-header">
-          <div className="header-search">
-            {/* Search placeholder */}
-          </div>
-
-        </header>
         <div className="content-inner">
           <ErrorBoundary>
             {children}

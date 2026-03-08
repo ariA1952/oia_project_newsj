@@ -196,7 +196,7 @@ export const clarifyCollaborationActivity = async (id, remarks) => {
   try {
     const formData = new URLSearchParams();
     formData.append('remarks', remarks);
-    const response = await apiClient.put(
+    const response = await apiClient.post(
       `/collaboration-activity/${id}/clarify`,
       formData.toString(),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
@@ -208,8 +208,10 @@ export const clarifyCollaborationActivity = async (id, remarks) => {
 };
 
 export const getPendingActivities = async () => {
+  // Alias for getCollaborationActivities — the dedicated /pending endpoint
+  // does not exist on the backend. Fetch all and filter client-side.
   try {
-    const response = await apiClient.get('/collaboration-activity/pending');
+    const response = await apiClient.post('/collaboration-activity/query', { status: 'SUBMITTED' });
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -253,9 +255,9 @@ export const getActivityDocumentUrl = (id) => {
 
 // ─── MOU APIs ────────────────────────────────────────────────────────────────
 
-export const getMOUs = async (params = { skip: 0, limit: 200 }) => {
+export const getMOUs = async () => {
   try {
-    const response = await apiClient.post('/mou/query', params);
+    const response = await apiClient.post('/mou/query');
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -295,26 +297,6 @@ export const createMOU = async (data) => {
 };
 
 /**
- * Update an MOU (Admin only). Accepts optional document file.
- */
-export const updateMOU = async (id, data) => {
-  try {
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value === undefined || value === null || value === '') return;
-      if (key === 'document') {
-        formData.append('document', value);
-      } else {
-        formData.append(key, value);
-      }
-    });
-    const response = await apiClient.put(`/mou/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error.message;
-  }
 };
 
 /**
