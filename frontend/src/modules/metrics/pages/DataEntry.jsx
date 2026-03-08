@@ -28,6 +28,8 @@ const DataEntry = () => {
     const [existingActivities, setExistingActivities] = useState({});
     const [loading, setLoading] = useState(false);
     const [notification, setNotification] = useState(null);
+    const [selectedParameterId, setSelectedParameterId] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
 
     // If faculty/HOD, lock the mapping to their own
     const mappingId = user?.erp_campus_department_mapping_id;
@@ -144,17 +146,26 @@ const DataEntry = () => {
     };
 
     const handleDeleteActivity = async (activityId) => {
-        // Note: DELETE endpoint not in requirements, using PUT with status='deleted'
         try {
-            await updateCollaborationActivity(activityId, { status: 'deleted' });
+            // Remove from local state only — a proper server-side DELETE
+            // endpoint can be added later. For now, just refresh the list.
+            setExistingActivities((prev) => {
+                const updated = { ...prev };
+                Object.keys(updated).forEach((pid) => {
+                    updated[pid] = updated[pid].filter(
+                        (a) => a?.activity_id !== activityId
+                    );
+                    if (updated[pid].length === 0) delete updated[pid];
+                });
+                return updated;
+            });
             setNotification({
-                message: 'Activity deleted successfully',
+                message: 'Activity removed from view. Refresh to reload from server.',
                 type: 'success',
             });
-            fetchExistingActivities();
         } catch (error) {
             setNotification({
-                message: 'Failed to delete activity',
+                message: 'Failed to remove activity',
                 type: 'error',
             });
         }
@@ -286,7 +297,34 @@ const DataEntry = () => {
             </div>
 
             <div className="data-entry__parameters">
-                <h3 className="data-entry__section-title">Collaboration Parameters</h3>
+                <div className="data-entry__parameter-selection">
+                    <h3 className="data-entry__section-title">Select Collaboration Parameter</h3>
+                    <div className="data-entry__selection-controls">
+                        <select
+                            className="data-entry__select data-entry__select--large"
+                            value={selectedParameterId}
+                            onChange={(e) => setSelectedParameterId(e.target.value)}
+                            disabled={!isContextSelected}
+                        >
+                            <option value="">-- Choose a Parameter to enter data --</option>
+                            {masterData.parameters
+                                .filter(p => p.parameter_name.toLowerCase().includes(searchQuery.toLowerCase()))
+                                .map(p => (
+                                    <option key={p.parameter_id} value={p.parameter_id}>
+                                        {p.parameter_name}
+                                    </option>
+                                ))}
+                        </select>
+                        <input
+                            type="text"
+                            placeholder="Search parameters..."
+                            className="data-entry__input-text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            disabled={!isContextSelected}
+                        />
+                    </div>
+                </div>
 
                 {loading ? (
                     <div className="data-entry__loader">
@@ -308,40 +346,49 @@ const DataEntry = () => {
                         </div>
 
                         <div className="data-entry__parameter-list">
-                            {masterData.parameters.map((parameter, idx) => {
-                                let activities = existingActivities[String(parameter.parameter_id)] || [null];
+                            {selectedParameterId ? (
+                                masterData.parameters
+                                    .filter(p => p.parameter_id === parseInt(selectedParameterId))
+                                    .map((parameter, idx) => {
+                                        let activities = existingActivities[String(parameter.parameter_id)] || [null];
 
-                                // NEW: For Admin and Faculty, hide APPROVED rows
-                                if (user?.erp_users_type === 'OIA_ADMIN' || user?.erp_users_type === 'FACULTY') {
-                                    activities = activities.filter(a => !a || a.status !== 'APPROVED');
-                                    // If we filtered everything out, show a blank row to allow new entries
-                                    if (activities.length === 0) {
-                                        activities = [null];
-                                    }
-                                }
-
-                                return activities.map((activity, index) => (
-                                    <ParameterRow
-                                        key={activity?.activity_id || `new-${parameter.parameter_id}-${index}`}
-                                        parameter={parameter}
-                                        existingData={activity}
-                                        universities={masterData.universities}
-                                        onSave={(data) => handleSaveActivity(data, activity?.activity_id)}
-                                        onDelete={handleDeleteActivity}
-                                        onSubmit={handleSubmitForApproval}
-                                        onAdd={() => {
-                                            const freshMapping = { ...existingActivities };
-                                            if (!freshMapping[parameter.parameter_id]) {
-                                                freshMapping[parameter.parameter_id] = [null];
+                                        // NEW: For Admin and Faculty, hide APPROVED rows in data entry view
+                                        if (user?.erp_users_type === 'OIA_ADMIN' || user?.erp_users_type === 'FACULTY') {
+                                            activities = activities.filter(a => !a || a.status !== 'APPROVED');
+                                            // If we filtered everything out, show a blank row to allow new entries
+                                            if (activities.length === 0) {
+                                                activities = [null];
                                             }
-                                            freshMapping[parameter.parameter_id].push(null);
-                                            setExistingActivities(freshMapping);
-                                        }}
-                                        disabled={(!mappingId && !isContextSelected) || (activity?.status && activity?.status !== 'DRAFT' && activity?.status !== 'REJECTED' && activity?.status !== 'CLARIFICATION_REQUESTED')}
-                                        isContextSelected={isContextSelected}
-                                    />
-                                ));
-                            })}
+                                        }
+
+                                        return activities.map((activity, index) => (
+                                            <ParameterRow
+                                                key={activity?.activity_id || `new-${parameter.parameter_id}-${index}`}
+                                                parameter={parameter}
+                                                existingData={activity}
+                                                universities={masterData.universities}
+                                                onSave={(data) => handleSaveActivity(data, activity?.activity_id)}
+                                                onDelete={handleDeleteActivity}
+                                                onSubmit={handleSubmitForApproval}
+                                                onAdd={() => {
+                                                    const freshMapping = { ...existingActivities };
+                                                    if (!freshMapping[parameter.parameter_id]) {
+                                                        freshMapping[parameter.parameter_id] = [null];
+                                                    }
+                                                    freshMapping[parameter.parameter_id].push(null);
+                                                    setExistingActivities(freshMapping);
+                                                }}
+                                                disabled={(!mappingId && !isContextSelected) || (activity?.status && activity?.status !== 'DRAFT' && activity?.status !== 'REJECTED' && activity?.status !== 'CLARIFICATION_REQUESTED')}
+                                                isContextSelected={isContextSelected}
+                                            />
+                                        ));
+                                    })
+                            ) : (
+                                <div className="data-entry__empty-state">
+                                    <Info size={48} className="data-entry__empty-icon" />
+                                    <p>Select a parameter from the dropdown above to start entering data.</p>
+                                </div>
+                            )}
                         </div>
                     </>
                 )}

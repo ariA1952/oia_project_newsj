@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Send, CheckCircle, XCircle, AlertCircle, HelpCircle } from 'lucide-react';
 import FilterBar from '../components/FilterBar';
 import ActionButton from '../../../common/ActionButton';
 import Loader from '../../../common/Loader';
 import Notification from '../../../common/Notification';
+import ClarificationChat from '../components/ClarificationChat';
 import { useAuth } from '../../../common/AuthContext';
 import useMetricsMasterData from '../hooks/useMetricsMasterData';
 import useUserProfile from '../hooks/useUserProfile';
@@ -38,6 +39,7 @@ const Review = () => {
     const [expandedParams, setExpandedParams] = useState({});
     const [loading, setLoading] = useState(false);
     const [notification, setNotification] = useState(null);
+    const [activeTab, setActiveTab] = useState('ALL'); // NEW: For Faculty Tabs
 
     // Reject modal
     const [rejectModal, setRejectModal] = useState({ show: false, activityId: null });
@@ -163,14 +165,29 @@ const Review = () => {
             setNotification({ message: 'Please enter clarification remarks', type: 'warning' });
             return;
         }
+
+        // Use prefix format to start thread
+        const prefix = userRole === 'FACULTY' ? '[FACULTY]: ' : '[REVIEWER]: ';
+        const initialRemark = `${prefix}${clarifyRemarks.trim()}`;
+
         try {
-            await clarifyCollaborationActivity(clarifyModal.activityId, clarifyRemarks);
+            await clarifyCollaborationActivity(clarifyModal.activityId, initialRemark);
             setNotification({ message: 'Clarification requested from faculty', type: 'success' });
             setClarifyModal({ show: false, activityId: null });
             setClarifyRemarks('');
             refreshData();
         } catch (error) {
             setNotification({ message: error?.detail || 'Failed to request clarification', type: 'error' });
+        }
+    };
+
+    const handleChatReply = async (activityId, newRemarksThread) => {
+        try {
+            await clarifyCollaborationActivity(activityId, newRemarksThread);
+            setNotification({ message: 'Reply sent', type: 'success' });
+            refreshData();
+        } catch (error) {
+            setNotification({ message: error?.detail || 'Failed to send reply', type: 'error' });
         }
     };
 
@@ -224,180 +241,263 @@ const Review = () => {
                             <AlertCircle size={48} className="review__empty-icon" />
                             <p>
                                 {userRole === 'FACULTY'
-                                    ? 'No submitted activities found'
+                                    ? 'No activities found in this tab'
                                     : 'No pending activities found for review'}
                             </p>
                         </div>
                     ) : (
-                        Object.entries(groupedActivities).map(([paramId, paramActivities]) => (
-                            <div key={paramId} className="review__parameter-group">
-                                <div
-                                    className="review__parameter-header"
-                                    onClick={() => toggleExpand(parseInt(paramId))}
-                                >
-                                    <span className="review__parameter-name">
-                                        {getParameterName(parseInt(paramId))}
-                                    </span>
-                                    <span className="review__parameter-count">
-                                        {paramActivities.length} {paramActivities.length === 1 ? 'activity' : 'activities'}
-                                    </span>
-                                    <span className="review__expand-icon">
-                                        {expandedParams[paramId] ? '▼' : '▶'}
-                                    </span>
+                        <>
+                            {userRole === 'FACULTY' && (
+                                <div className="review__tabs">
+                                    {['ALL', 'SUBMITTED', 'CLARIFICATION_REQUESTED', 'APPROVED', 'REJECTED'].map(tab => (
+                                        <button
+                                            key={tab}
+                                            className={`review__tab-button ${activeTab === tab ? 'review__tab-button--active' : ''}`}
+                                            onClick={() => setActiveTab(tab)}
+                                        >
+                                            {tab.replace('_', ' ')}
+                                        </button>
+                                    ))}
                                 </div>
+                            )}
 
-                                {expandedParams[paramId] && (
-                                    <div className="review__activities">
-                                        {paramActivities.map((activity) => {
-                                            const isClarificationRequested = activity.status === 'CLARIFICATION_REQUESTED';
-                                            const isSubmitted = activity.status === 'SUBMITTED';
-                                            const isApproved = activity.status === 'APPROVED';
-                                            const isRejected = activity.status === 'REJECTED';
-                                            const docUrl = activity.document_path
-                                                ? getActivityDocumentUrl(activity.activity_id)
-                                                : null;
+                            {Object.entries(groupedActivities).map(([paramId, paramActivities]) => {
+                                // Filter activities for faculty based on selected tab
+                                const displayActivities = userRole === 'FACULTY' && activeTab !== 'ALL'
+                                    ? paramActivities.filter(a => a.status === activeTab)
+                                    : paramActivities;
 
-                                            return (
-                                                <div key={activity.activity_id} className="review__activity-card">
-                                                    <div className="review__activity-info">
-                                                        {/* Title */}
-                                                        {activity.activity_title && (
-                                                            <div className="review__activity-row">
-                                                                <strong>Title:</strong> {activity.activity_title}
+                                if (displayActivities.length === 0) return null;
+
+                                return (
+                                    <div key={paramId} className="review__parameter-group">
+                                        <div
+                                            className="review__parameter-header"
+                                            onClick={() => toggleExpand(parseInt(paramId))}
+                                        >
+                                            <span className="review__parameter-name">
+                                                {getParameterName(parseInt(paramId))}
+                                            </span>
+                                            <span className="review__parameter-count">
+                                                {paramActivities.length} {paramActivities.length === 1 ? 'activity' : 'activities'}
+                                            </span>
+                                            <span className="review__expand-icon">
+                                                {expandedParams[paramId] ? '▼' : '▶'}
+                                            </span>
+                                        </div>
+
+                                        {expandedParams[paramId] && (
+                                            <div className="review__activities">
+                                                {userRole === 'FACULTY' ? (
+                                                    displayActivities.map((activity) => {
+                                                        const isClarificationRequested = activity.status === 'CLARIFICATION_REQUESTED';
+                                                        const isSubmitted = activity.status === 'SUBMITTED';
+                                                        const isApproved = activity.status === 'APPROVED';
+                                                        const isRejected = activity.status === 'REJECTED';
+                                                        const docUrl = activity.document_path
+                                                            ? getActivityDocumentUrl(activity.activity_id)
+                                                            : null;
+
+                                                        return (
+                                                            <div key={activity.activity_id} className="review__activity-card">
+                                                                <div className="review__activity-info">
+                                                                    {/* Title */}
+                                                                    {activity.activity_title && (
+                                                                        <div className="review__activity-row">
+                                                                            <strong>Title:</strong> {activity.activity_title}
+                                                                        </div>
+                                                                    )}
+                                                                    {/* Value */}
+                                                                    <div className="review__activity-row">
+                                                                        <strong>Value:</strong> {activity.numeric_value ?? 'N/A'}
+                                                                    </div>
+                                                                    {/* University */}
+                                                                    {activity.university_id && (
+                                                                        <div className="review__activity-row">
+                                                                            <strong>University:</strong>{' '}
+                                                                            {getUniversityName(activity.university_id) || `ID #${activity.university_id}`}
+                                                                        </div>
+                                                                    )}
+                                                                    {/* Dates */}
+                                                                    {(activity.start_date || activity.end_date) && (
+                                                                        <div className="review__activity-row">
+                                                                            <strong>Duration:</strong>{' '}
+                                                                            {activity.start_date || '—'} → {activity.end_date || '—'}
+                                                                        </div>
+                                                                    )}
+                                                                    {/* Remarks */}
+                                                                    {activity.activity_data?.remarks && (
+                                                                        <div className="review__activity-row">
+                                                                            <strong>Notes:</strong> {activity.activity_data.remarks}
+                                                                        </div>
+                                                                    )}
+                                                                    {/* Document */}
+                                                                    {docUrl && (
+                                                                        <div className="review__activity-row">
+                                                                            <strong>Document:</strong>{' '}
+                                                                            <a href={docUrl} target="_blank" rel="noopener noreferrer" className="review__doc-link">
+                                                                                View / Download
+                                                                            </a>
+                                                                        </div>
+                                                                    )}
+                                                                    {/* Status */}
+                                                                    <div className="review__activity-row">
+                                                                        <strong>Status:</strong>{' '}
+                                                                        <span className={`status-badge status-badge--${activity.status?.toLowerCase().replace('_', '-') || 'draft'}`}>
+                                                                            {activity.status || 'DRAFT'}
+                                                                        </span>
+                                                                    </div>
+                                                                    {/* Processor info */}
+                                                                    {activity.approved_user_id && (
+                                                                        <div className="review__activity-row">
+                                                                            <strong>Processed By:</strong> User ID {activity.approved_user_id}
+                                                                        </div>
+                                                                    )}
+                                                                    {/* Rejection / Clarification remarks */}
+                                                                    {isRejected && activity.rejection_remarks && (
+                                                                        <div className="review__activity-remarks">
+                                                                            <AlertCircle size={14} />
+                                                                            <span>
+                                                                                <strong>Reason for Rejection:</strong>{' '}
+                                                                                {activity.rejection_remarks.split('|||').pop().replace('[REVIEWER]:', '').replace('[FACULTY]:', '').trim()}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {isClarificationRequested && (
+                                                                        <ClarificationChat
+                                                                            activity={activity}
+                                                                            onReply={(newRemarks) => handleChatReply(activity.activity_id, newRemarks)}
+                                                                        />
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Actions */}
+                                                                <div className="review__activity-actions">
+                                                                    {/* Faculty actions */}
+                                                                    {activity.status === 'DRAFT' && (
+                                                                        <ActionButton
+                                                                            variant="success"
+                                                                            onClick={() => handleRequestApproval(activity.activity_id)}
+                                                                        >
+                                                                            <Send size={16} style={{ marginRight: '6px' }} />
+                                                                            Request Approval
+                                                                        </ActionButton>
+                                                                    )}
+                                                                    {isClarificationRequested && (
+                                                                        <ActionButton
+                                                                            variant="warning"
+                                                                            onClick={() => handleResubmit(activity.activity_id)}
+                                                                        >
+                                                                            <Send size={16} style={{ marginRight: '6px' }} />
+                                                                            Resubmit after Clarification
+                                                                        </ActionButton>
+                                                                    )}
+                                                                    {(isSubmitted || isApproved) && (
+                                                                        <span className="action-label">
+                                                                            {isApproved ? 'Approved ✓' : 'Awaiting Review'}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                        )}
-                                                        {/* Value */}
-                                                        <div className="review__activity-row">
-                                                            <strong>Value:</strong> {activity.numeric_value ?? 'N/A'}
-                                                        </div>
-                                                        {/* University */}
-                                                        {activity.university_id && (
-                                                            <div className="review__activity-row">
-                                                                <strong>University:</strong>{' '}
-                                                                {getUniversityName(activity.university_id) || `ID #${activity.university_id}`}
-                                                            </div>
-                                                        )}
-                                                        {/* Dates */}
-                                                        {(activity.start_date || activity.end_date) && (
-                                                            <div className="review__activity-row">
-                                                                <strong>Duration:</strong>{' '}
-                                                                {activity.start_date || '—'} → {activity.end_date || '—'}
-                                                            </div>
-                                                        )}
-                                                        {/* Remarks */}
-                                                        {activity.activity_data?.remarks && (
-                                                            <div className="review__activity-row">
-                                                                <strong>Notes:</strong> {activity.activity_data.remarks}
-                                                            </div>
-                                                        )}
-                                                        {/* Document */}
-                                                        {docUrl && (
-                                                            <div className="review__activity-row">
-                                                                <strong>Document:</strong>{' '}
-                                                                <a href={docUrl} target="_blank" rel="noopener noreferrer" className="review__doc-link">
-                                                                    View / Download
-                                                                </a>
-                                                            </div>
-                                                        )}
-                                                        {/* Status */}
-                                                        <div className="review__activity-row">
-                                                            <strong>Status:</strong>{' '}
-                                                            <span className={`status-badge status-badge--${activity.status?.toLowerCase().replace('_', '-') || 'draft'}`}>
-                                                                {activity.status || 'DRAFT'}
-                                                            </span>
-                                                        </div>
-                                                        {/* Processor info */}
-                                                        {activity.approved_user_id && (
-                                                            <div className="review__activity-row">
-                                                                <strong>Processed By:</strong> User ID {activity.approved_user_id}
-                                                            </div>
-                                                        )}
-                                                        {/* Rejection / Clarification remarks */}
-                                                        {(isRejected || isClarificationRequested) && activity.rejection_remarks && (
-                                                            <div className={`review__activity-remarks ${isClarificationRequested ? 'review__activity-remarks--clarify' : ''}`}>
-                                                                <AlertCircle size={14} />
-                                                                <span>
-                                                                    <strong>
-                                                                        {isClarificationRequested ? 'Clarification Needed:' : 'Reason:'}
-                                                                    </strong>{' '}
-                                                                    {activity.rejection_remarks}
-                                                                </span>
-                                                            </div>
-                                                        )}
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <div className="review__table-container">
+                                                        <table className="review__table">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Title / Detail</th>
+                                                                    <th>Value</th>
+                                                                    <th>University</th>
+                                                                    <th>Duration</th>
+                                                                    <th>Status</th>
+                                                                    <th>Processed By</th>
+                                                                    <th>Actions</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {displayActivities.map((activity) => {
+                                                                    const isClarificationRequested = activity.status === 'CLARIFICATION_REQUESTED';
+                                                                    const isSubmitted = activity.status === 'SUBMITTED';
+                                                                    const isApproved = activity.status === 'APPROVED';
+                                                                    const isRejected = activity.status === 'REJECTED';
+                                                                    const docUrl = activity.document_path ? getActivityDocumentUrl(activity.activity_id) : null;
+
+                                                                    return (
+                                                                        <Fragment key={activity.activity_id}>
+                                                                            <tr className={isClarificationRequested ? 'review__table-row--has-chat' : ''}>
+                                                                                <td>
+                                                                                    <div className="review__table-title">{activity.activity_title || 'N/A'}</div>
+                                                                                    {activity.activity_data?.remarks && <div className="review__table-remarks">{activity.activity_data.remarks}</div>}
+                                                                                    {docUrl && <a href={docUrl} target="_blank" rel="noopener noreferrer" className="review__doc-link">View Doc</a>}
+
+                                                                                    {isRejected && activity.rejection_remarks && (
+                                                                                        <div className="review__activity-remarks" style={{ marginTop: '8px' }}>
+                                                                                            <AlertCircle size={14} />
+                                                                                            <span>
+                                                                                                <strong>Reason:</strong> {activity.rejection_remarks.split('|||').pop().replace('[REVIEWER]:', '').replace('[FACULTY]:', '').trim()}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </td>
+                                                                                <td>{activity.numeric_value ?? 'N/A'}</td>
+                                                                                <td>{getUniversityName(activity.university_id) || `ID #${activity.university_id}`}</td>
+                                                                                <td>
+                                                                                    {(activity.start_date || activity.end_date) ? `${activity.start_date || '—'} → ${activity.end_date || '—'}` : '—'}
+                                                                                </td>
+                                                                                <td>
+                                                                                    <span className={`status-badge status-badge--${activity.status?.toLowerCase().replace('_', '-') || 'draft'}`}>
+                                                                                        {activity.status || 'DRAFT'}
+                                                                                    </span>
+                                                                                </td>
+                                                                                <td>{activity.approved_user_id ? `User ID ${activity.approved_user_id}` : '—'}</td>
+                                                                                <td>
+                                                                                    <div className="review__activity-actions">
+                                                                                        {canActOnActivities && isSubmitted && (
+                                                                                            <>
+                                                                                                <ActionButton variant="success" onClick={() => handleApprove(activity.activity_id)}>
+                                                                                                    <CheckCircle size={16} /> Approve
+                                                                                                </ActionButton>
+                                                                                                <ActionButton variant="warning" onClick={() => handleClarifyClick(activity.activity_id)}>
+                                                                                                    <HelpCircle size={16} /> Clarify
+                                                                                                </ActionButton>
+                                                                                                <ActionButton variant="danger" onClick={() => handleRejectClick(activity.activity_id)}>
+                                                                                                    <XCircle size={16} /> Reject
+                                                                                                </ActionButton>
+                                                                                            </>
+                                                                                        )}
+                                                                                        {canActOnActivities && !isSubmitted && (
+                                                                                            <span className="action-label">
+                                                                                                {isApproved ? 'Approved' : isRejected ? 'Rejected' : isClarificationRequested ? 'Clarification Sent' : '—'}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </td>
+                                                                            </tr>
+                                                                            {isClarificationRequested && (
+                                                                                <tr className="review__chat-row">
+                                                                                    <td colSpan="7" style={{ padding: '0 16px 16px 16px', borderTop: 'none', borderBottom: '1px solid #e5e7eb' }}>
+                                                                                        <ClarificationChat
+                                                                                            activity={activity}
+                                                                                            onReply={(newRemarks) => handleChatReply(activity.activity_id, newRemarks)}
+                                                                                        />
+                                                                                    </td>
+                                                                                </tr>
+                                                                            )}
+                                                                        </Fragment>
+                                                                    );
+                                                                })}
+                                                            </tbody>
+                                                        </table>
                                                     </div>
-
-                                                    {/* Actions */}
-                                                    <div className="review__activity-actions">
-                                                        {/* HOD / Admin actions for SUBMITTED */}
-                                                        {canActOnActivities && isSubmitted && (
-                                                            <>
-                                                                <ActionButton
-                                                                    variant="success"
-                                                                    onClick={() => handleApprove(activity.activity_id)}
-                                                                >
-                                                                    <CheckCircle size={16} style={{ marginRight: '6px' }} />
-                                                                    Approve
-                                                                </ActionButton>
-                                                                <ActionButton
-                                                                    variant="warning"
-                                                                    onClick={() => handleClarifyClick(activity.activity_id)}
-                                                                >
-                                                                    <HelpCircle size={16} style={{ marginRight: '6px' }} />
-                                                                    Clarify
-                                                                </ActionButton>
-                                                                <ActionButton
-                                                                    variant="danger"
-                                                                    onClick={() => handleRejectClick(activity.activity_id)}
-                                                                >
-                                                                    <XCircle size={16} style={{ marginRight: '6px' }} />
-                                                                    Reject
-                                                                </ActionButton>
-                                                            </>
-                                                        )}
-
-                                                        {/* Faculty actions */}
-                                                        {userRole === 'FACULTY' && (
-                                                            <>
-                                                                {activity.status === 'DRAFT' && (
-                                                                    <ActionButton
-                                                                        variant="success"
-                                                                        onClick={() => handleRequestApproval(activity.activity_id)}
-                                                                    >
-                                                                        <Send size={16} style={{ marginRight: '6px' }} />
-                                                                        Request Approval
-                                                                    </ActionButton>
-                                                                )}
-                                                                {isClarificationRequested && (
-                                                                    <ActionButton
-                                                                        variant="warning"
-                                                                        onClick={() => handleResubmit(activity.activity_id)}
-                                                                    >
-                                                                        <Send size={16} style={{ marginRight: '6px' }} />
-                                                                        Resubmit after Clarification
-                                                                    </ActionButton>
-                                                                )}
-                                                                {(isSubmitted || isApproved) && (
-                                                                    <span className="action-label">
-                                                                        {isApproved ? 'Approved ✓' : 'Awaiting Review'}
-                                                                    </span>
-                                                                )}
-                                                            </>
-                                                        )}
-
-                                                        {/* Non-action states for HOD/Admin */}
-                                                        {canActOnActivities && !isSubmitted && (
-                                                            <span className="action-label">
-                                                                {isApproved ? 'Approved' : isRejected ? 'Rejected' : isClarificationRequested ? 'Clarification Sent' : '—'}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        ))
+                                );
+                            })}
+                        </>
                     )}
                 </div>
             )}

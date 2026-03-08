@@ -1,0 +1,78 @@
+﻿
+> frontend@0.0.0 build
+> vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 18 modules transformed.
+node.exe : [31mΓ£ù[39m Build 
+failed in 1.19s
+At C:\Program 
+Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotS 
+   pecified: ([31mΓ£ù[39m Build  
+   failed in 1.19s:String) [], R   
+ emoteException
+    + FullyQualifiedErrorId : Nati 
+   veCommandError
+ 
+[31merror during build:
+[31m[vite:esbuild] Transform 
+failed with 1 error:
+C:/Users/J/OneDrive/Desktop/interna
+tional-final/oia_project_newsj/fron
+tend/src/modules/metrics/pages/Dash
+board.jsx:250:0: ERROR: Unexpected 
+"}"[31m
+file: [36mC:/Users/J/OneDrive/Desk
+top/international-final/oia_project
+_newsj/frontend/src/modules/metrics
+/pages/Dashboard.jsx:250:0[31m
+[33m
+[33mUnexpected "}"[33m
+248 |      </div>
+249 |  );
+250 |  };
+    |  ^
+251 |  
+252 |  export default Dashboard;
+[31m
+    at failureErrorWithLog (C:\User
+s\J\OneDrive\Desktop\international-
+final\oia_project_newsj\frontend\no
+de_modules\esbuild\lib\main.js:1467
+:15)
+    at C:\Users\J\OneDrive\Desktop\
+international-final\oia_project_new
+sj\frontend\node_modules\esbuild\li
+b\main.js:736:50
+    at 
+responseCallbacks.<computed> (C:\Us
+ers\J\OneDrive\Desktop\internationa
+l-final\oia_project_newsj\frontend\
+node_modules\esbuild\lib\main.js:60
+3:9)
+    at handleIncomingPacket (C:\Use
+rs\J\OneDrive\Desktop\international
+-final\oia_project_newsj\frontend\n
+ode_modules\esbuild\lib\main.js:658
+:12)
+    at Socket.readFromStdout (C:\Us
+ers\J\OneDrive\Desktop\internationa
+l-final\oia_project_newsj\frontend\
+node_modules\esbuild\lib\main.js:58
+1:7)
+    at Socket.emit 
+(node:events:518:28)
+    at addChunk (node:internal/stre
+ams/readable:561:12)
+    at 
+readableAddChunkPushByteMode (node:
+internal/streams/readable:512:3)
+    at Readable.push (node:internal
+/streams/readable:392:5)
+    at Pipe.onStreamRead (node:inte
+rnal/stream_base_commons:189:23)[3
+9m

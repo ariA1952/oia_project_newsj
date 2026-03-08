@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../../common/AuthContext';
 import Notification from '../../../common/Notification';
 import './Login.css';
@@ -7,6 +8,7 @@ import './Login.css';
 const LoginPage = () => {
     const [userId, setUserId] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -69,14 +71,25 @@ const LoginPage = () => {
 
                     <div className="form-group">
                         <label htmlFor="password">Password</label>
-                        <input
-                            type="password"
-                            id="password"
-                            placeholder="Enter your password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            disabled={loading}
-                        />
+                        <div className="password-input-wrapper">
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                id="password"
+                                placeholder="Enter your password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                disabled={loading}
+                            />
+                            <button
+                                type="button"
+                                className="password-toggle"
+                                onClick={() => setShowPassword(prev => !prev)}
+                                tabIndex={-1}
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </div>
                     </div>
 
                     <button type="submit" className="login-button" disabled={loading}>

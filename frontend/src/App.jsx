@@ -19,6 +19,7 @@ import MOU from './modules/metrics/pages/MOU';
 import LoginPage from './modules/auth/pages/LoginPage';
 import { AuthProvider, useAuth } from './common/AuthContext';
 import ProtectedRoute from './common/ProtectedRoute';
+import ErrorBoundary from './common/ErrorBoundary';
 import './App.css';
 
 const Sidebar = () => {
@@ -97,7 +98,9 @@ const Layout = ({ children }) => {
 
         </header>
         <div className="content-inner">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </div>
       </main>
     </div>

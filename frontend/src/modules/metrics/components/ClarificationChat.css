@@ -1,0 +1,128 @@
+.clarification-chat {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+    display: flex;
+    flex-direction: column;
+    max-height: 400px;
+    overflow: hidden;
+    margin-top: 16px;
+}
+
+.clarification-chat__header {
+    padding: 12px 16px;
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.clarification-chat__header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.clarification-chat__messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.clarification-chat__empty {
+    text-align: center;
+    color: #9ca3af;
+    font-style: italic;
+    font-size: 13px;
+    padding: 20px 0;
+}
+
+.clarification-chat__message-wrapper {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.clarification-chat__message-wrapper--owner {
+    flex-direction: row-reverse;
+}
+
+.clarification-chat__avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    flex-shrink: 0;
+}
+
+.clarification-chat__message-wrapper--owner .clarification-chat__avatar {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.clarification-chat__message {
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    max-width: 85%;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.clarification-chat__message--owner {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    text-align: right;
+}
+
+.clarification-chat__sender {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.clarification-chat__text {
+    font-size: 13px;
+    color: #111827;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    /* NEW: Prevents long unbroken text from overflowing */
+}
+
+.clarification-chat__message--owner .clarification-chat__text {
+    color: #1e3a8a;
+}
+
+.clarification-chat__input-area {
+    padding: 16px;
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.clarification-chat__textarea {
+    flex: 1;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+}
+
+.clarification-chat__textarea:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
