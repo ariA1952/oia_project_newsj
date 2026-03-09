@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import FilterBar from '../components/FilterBar';
 import HeatMap from '../components/HeatMap';
+import DepartmentPieChart from '../components/DepartmentPieChart';
 import ActionButton from '../../../common/ActionButton';
 import Loader from '../../../common/Loader';
 import Notification from '../../../common/Notification';
@@ -29,7 +30,9 @@ const Reports = () => {
         parameterTotals: [],
         departmentComparison: [],
         heatmapData: [],
+        pieChartData: [],
     });
+    const [pieChartTitle, setPieChartTitle] = useState('');
 
     useEffect(() => {
         if (filters.academic_year_id && filters.quarter_id) {
@@ -107,10 +110,46 @@ const Reports = () => {
             value: activity.numeric_value || 0,
         }));
 
+        // Pie chart data: parameter distribution
+        const pieChartData = Object.values(
+            data.reduce((acc, activity) => {
+                const paramId = activity.parameter_id;
+                const paramName = getParameterName(paramId);
+                if (!acc[paramId]) {
+                    acc[paramId] = {
+                        name: paramName,
+                        count: 0,
+                        total: 0,
+                    };
+                }
+                acc[paramId].count += 1;
+                acc[paramId].total += activity.numeric_value || 0;
+                return acc;
+            }, {})
+        ).filter((item) => item.count > 0);
+
+        // Build pie chart title from selected department or campus
+        let title = '';
+        if (filters.department_id) {
+            const dept = masterData.departments?.find(
+                (d) => String(d.erp_department_id) === String(filters.department_id)
+            );
+            title = dept?.department_name || 'Selected Department';
+        } else if (filters.campus_id) {
+            const campus = masterData.campuses?.find(
+                (c) => String(c.erp_campus_id) === String(filters.campus_id)
+            );
+            title = campus?.campus_name || 'Selected Campus';
+        } else {
+            title = 'All Departments';
+        }
+        setPieChartTitle(title);
+
         setReportData({
             parameterTotals,
             departmentComparison,
             heatmapData,
+            pieChartData,
         });
     };
 
@@ -248,7 +287,15 @@ const Reports = () => {
                     )}
 
                     <div className="reports__section">
-                        <h3 className="reports__section-title">Activity Distribution</h3>
+                        <h3 className="reports__section-title">Parameter Distribution</h3>
+                        <DepartmentPieChart
+                            data={reportData.pieChartData}
+                            title={pieChartTitle}
+                        />
+                    </div>
+
+                    <div className="reports__section">
+                        <h3 className="reports__section-title">Activity Distribution (Heatmap)</h3>
                         <HeatMap
                             data={reportData.heatmapData}
                             parameters={masterData.parameters}
