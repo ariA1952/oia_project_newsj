@@ -233,6 +233,8 @@
 .review__activity-actions {
     display: flex;
     gap: 8px;
+    justify-content: center;
+    align-items: center;
 }
 
 /* Data Table Styles for HOD/Admin */
@@ -258,6 +260,10 @@
     color: #374151;
     border-bottom: 1px solid #e5e7eb;
     white-space: nowrap;
+}
+
+.review__table th:last-child {
+    text-align: center;
 }
 
 .review__table td {

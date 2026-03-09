@@ -76,6 +76,23 @@ const FilterBar = ({ filters, onChange, masterData, loading }) => {
                     ))}
                 </select>
             </div>
+
+            <div className="filter-bar__group">
+                <label className="filter-bar__label">Parameter</label>
+                <select
+                    className="filter-bar__select"
+                    value={filters.parameter_id || ''}
+                    onChange={(e) => handleChange('parameter_id', e.target.value)}
+                    disabled={loading}
+                >
+                    <option value="">All Parameters</option>
+                    {masterData.parameters.map((param) => (
+                        <option key={param.parameter_id} value={param.parameter_id}>
+                            {param.parameter_name}
+                        </option>
+                    ))}
+                </select>
+            </div>
         </div>
     );
 };

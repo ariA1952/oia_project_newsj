@@ -9,11 +9,14 @@ import { useAuth } from '../../../common/AuthContext';
 import useMetricsMasterData from '../hooks/useMetricsMasterData';
 import useUserProfile from '../hooks/useUserProfile';
 import {
+    updateCollaborationActivity,
     getCollaborationActivities,
     submitCollaborationActivity,
     approveCollaborationActivity,
     rejectCollaborationActivity,
-    clarifyCollaborationActivity,
+    requestClarification,
+    sendClarificationReply,
+    getClarifications,
     getActivityDocumentUrl,
 } from '../services/metricsService';
 import './Review.css';
@@ -31,6 +34,7 @@ const Review = () => {
         quarter_id: '',
         campus_id: '',
         department_id: '',
+        parameter_id: '',
     });
     const [activities, setActivities] = useState([]);
     const [groupedActivities, setGroupedActivities] = useState({});
@@ -164,12 +168,14 @@ const Review = () => {
             return;
         }
 
-        // Use prefix format to start thread
-        const prefix = userRole === 'FACULTY' ? '[FACULTY]: ' : '[REVIEWER]: ';
-        const initialRemark = `${prefix}${clarifyRemarks.trim()}`;
-
         try {
-            await clarifyCollaborationActivity(clarifyModal.activityId, initialRemark);
+            // 1. Move the status to CLARIFICATION_REQUESTED first
+            await requestClarification(clarifyModal.activityId, clarifyRemarks.trim());
+
+            // 2. Now that status is CLARIFICATION_REQUESTED, we can update rejection_remarks
+            // so it's visible in the list view note/reason immediately
+            await updateCollaborationActivity(clarifyModal.activityId, { rejection_remarks: clarifyRemarks.trim() });
+
             setNotification({ message: 'Clarification requested from faculty', type: 'success' });
             setClarifyModal({ show: false, activityId: null });
             setClarifyRemarks('');
@@ -179,10 +185,12 @@ const Review = () => {
         }
     };
 
-    const handleChatReply = async (activityId, newRemarksThread) => {
+    const handleChatReply = async (activityId, message) => {
         try {
-            await clarifyCollaborationActivity(activityId, newRemarksThread);
+            await sendClarificationReply(activityId, message);
             setNotification({ message: 'Reply sent', type: 'success' });
+            // refreshData is actually called inside ClarificationChat usually, 
+            // but we can trigger it here to refresh status badges if needed.
             refreshData();
         } catch (error) {
             setNotification({ message: error?.detail || 'Failed to send reply', type: 'error' });
@@ -192,8 +200,11 @@ const Review = () => {
     // ── Faculty: Resubmit (after clarification) ─────────────────────────────────
     const handleResubmit = async (activityId) => {
         try {
+            // Clear the remarks once resubmitted
+            await updateCollaborationActivity(activityId, { rejection_remarks: '' });
+
             await submitCollaborationActivity(activityId);
-            setNotification({ message: 'Activity resubmitted for review', type: 'success' });
+            setNotification({ message: 'Activity resubmitted for approval', type: 'success' });
             refreshData();
         } catch (error) {
             setNotification({ message: error?.detail || 'Failed to resubmit', type: 'error' });
@@ -352,11 +363,11 @@ const Review = () => {
                                                                         </div>
                                                                     )}
                                                                     {/* Rejection / Clarification remarks */}
-                                                                    {isRejected && activity.rejection_remarks && (
-                                                                        <div className="review__activity-remarks">
-                                                                            <AlertCircle size={14} />
+                                                                    {(isRejected || isClarificationRequested) && activity.rejection_remarks && (
+                                                                        <div className={`review__activity-remarks ${isClarificationRequested ? 'review__activity-remarks--clarify' : ''}`}>
+                                                                            {isClarificationRequested ? <HelpCircle size={14} /> : <AlertCircle size={14} />}
                                                                             <span>
-                                                                                <strong>Reason for Rejection:</strong>{' '}
+                                                                                <strong>{isClarificationRequested ? 'Clarification Note:' : 'Reason for Rejection:'}</strong>{' '}
                                                                                 {activity.rejection_remarks.split('|||').pop().replace('[REVIEWER]:', '').replace('[FACULTY]:', '').trim()}
                                                                             </span>
                                                                         </div>
@@ -430,11 +441,11 @@ const Review = () => {
                                                                                     {activity.activity_data?.remarks && <div className="review__table-remarks">{activity.activity_data.remarks}</div>}
                                                                                     {docUrl && <a href={docUrl} target="_blank" rel="noopener noreferrer" className="review__doc-link">View Doc</a>}
 
-                                                                                    {isRejected && activity.rejection_remarks && (
-                                                                                        <div className="review__activity-remarks" style={{ marginTop: '8px' }}>
-                                                                                            <AlertCircle size={14} />
+                                                                                    {(isRejected || isClarificationRequested) && activity.rejection_remarks && (
+                                                                                        <div className={`review__activity-remarks ${isClarificationRequested ? 'review__activity-remarks--clarify' : ''}`} style={{ marginTop: '8px' }}>
+                                                                                            {isClarificationRequested ? <HelpCircle size={14} /> : <AlertCircle size={14} />}
                                                                                             <span>
-                                                                                                <strong>Reason:</strong> {activity.rejection_remarks.split('|||').pop().replace('[REVIEWER]:', '').replace('[FACULTY]:', '').trim()}
+                                                                                                <strong>{isClarificationRequested ? 'Note:' : 'Reason:'}</strong> {activity.rejection_remarks.split('|||').pop().replace('[REVIEWER]:', '').replace('[FACULTY]:', '').trim()}
                                                                                             </span>
                                                                                         </div>
                                                                                     )}
@@ -457,11 +468,11 @@ const Review = () => {
                                                                                                 <ActionButton variant="success" onClick={() => handleApprove(activity.activity_id)}>
                                                                                                     <CheckCircle size={16} /> Approve
                                                                                                 </ActionButton>
-                                                                                                <ActionButton variant="warning" onClick={() => handleClarifyClick(activity.activity_id)}>
-                                                                                                    <HelpCircle size={16} /> Clarify
-                                                                                                </ActionButton>
                                                                                                 <ActionButton variant="danger" onClick={() => handleRejectClick(activity.activity_id)}>
                                                                                                     <XCircle size={16} /> Reject
+                                                                                                </ActionButton>
+                                                                                                <ActionButton variant="warning" onClick={() => handleClarifyClick(activity.activity_id)}>
+                                                                                                    <HelpCircle size={16} /> Clarify
                                                                                                 </ActionButton>
                                                                                             </>
                                                                                         )}

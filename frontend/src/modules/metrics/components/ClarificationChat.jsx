@@ -1,48 +1,55 @@
-import React, { useState } from 'react';
-import { Send, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Send, User, Loader2 } from 'lucide-react';
 import ActionButton from '../../../common/ActionButton';
 import { useAuth } from '../../../common/AuthContext';
+import { getClarifications } from '../services/metricsService';
 import './ClarificationChat.css';
 
 const ClarificationChat = ({ activity, onReply }) => {
     const { user } = useAuth();
+    const [messages, setMessages] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [replyText, setReplyText] = useState('');
 
-    // Parse the single rejection_remarks string into mock messages
-    const parseMessages = (remarks) => {
-        if (!remarks) return [];
-
-        // We split by a standard delimiter if we use one, otherwise treat as one message 
-        // For now, if it's just raw text from HOD, we show it as one message from "Reviewer"
-        const parts = remarks.split('|||');
-
-        return parts.map((part, index) => {
-            const isFaculty = part.includes('[FACULTY]:');
-            const isAdmin = part.includes('[REVIEWER]:');
-            const cleanText = part.replace('[FACULTY]:', '').replace('[REVIEWER]:', '').trim();
-
-            return {
-                id: index,
-                sender: isFaculty ? 'Faculty' : 'Reviewer',
-                isOwner: (isFaculty && user?.erp_users_type === 'FACULTY') ||
-                    (!isFaculty && user?.erp_users_type !== 'FACULTY'),
-                text: cleanText || part.trim(),
-            };
-        }).filter(m => m.text);
+    const fetchMessages = async () => {
+        try {
+            setLoading(true);
+            const data = await getClarifications(activity.activity_id);
+            setMessages(data);
+        } catch (error) {
+            console.error('Failed to fetch clarifications:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const messages = parseMessages(activity.rejection_remarks);
+    useEffect(() => {
+        fetchMessages();
+    }, [activity.activity_id]);
 
-    const handleSend = () => {
+    const handleSend = async () => {
         if (!replyText.trim()) return;
 
-        const prefix = user?.erp_users_type === 'FACULTY' ? '[FACULTY]: ' : '[REVIEWER]: ';
-        const existingRemarks = activity.rejection_remarks ? activity.rejection_remarks + ' ||| ' : '';
-        const newRemarks = existingRemarks + prefix + replyText.trim();
+        const textToSubmit = replyText.trim();
+        setReplyText(''); // Clear early for UX
 
-        onReply(newRemarks);
-        setReplyText('');
+        try {
+            await onReply(textToSubmit);
+            // Re-fetch to show the new message
+            fetchMessages();
+        } catch (error) {
+            setReplyText(textToSubmit); // Restore on failure
+        }
     };
+
+    if (loading && messages.length === 0) {
+        return (
+            <div className="clarification-chat clarification-chat--loading">
+                <Loader2 className="animate-spin" size={24} />
+                <span>Loading messages...</span>
+            </div>
+        );
+    }
 
     return (
         <div className="clarification-chat">
@@ -54,20 +61,28 @@ const ClarificationChat = ({ activity, onReply }) => {
                 {messages.length === 0 ? (
                     <div className="clarification-chat__empty">No clarification messages yet.</div>
                 ) : (
-                    messages.map((msg) => (
-                        <div
-                            key={msg.id}
-                            className={`clarification-chat__message-wrapper ${msg.isOwner ? 'clarification-chat__message-wrapper--owner' : ''}`}
-                        >
-                            <div className="clarification-chat__avatar">
-                                <User size={16} />
+                    messages.map((msg) => {
+                        const isOwner = msg.sender_user_id === user?.erp_users_id;
+                        const senderName = isOwner ? 'You' : (msg.sender_role || 'Reviewer');
+
+                        return (
+                            <div
+                                key={msg.clarification_id}
+                                className={`clarification-chat__message-wrapper ${isOwner ? 'clarification-chat__message-wrapper--owner' : ''}`}
+                            >
+                                <div className="clarification-chat__avatar">
+                                    <User size={16} />
+                                </div>
+                                <div className={`clarification-chat__message ${isOwner ? 'clarification-chat__message--owner' : ''}`}>
+                                    <div className="clarification-chat__sender">{senderName}</div>
+                                    <div className="clarification-chat__text">{msg.message}</div>
+                                    <div className="clarification-chat__time">
+                                        {new Date(msg.created_at).toLocaleString()}
+                                    </div>
+                                </div>
                             </div>
-                            <div className={`clarification-chat__message ${msg.isOwner ? 'clarification-chat__message--owner' : ''}`}>
-                                <div className="clarification-chat__sender">{msg.sender}</div>
-                                <div className="clarification-chat__text">{msg.text}</div>
-                            </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
 

@@ -130,10 +130,21 @@ export const createCollaborationActivity = async (data) => {
       }
     });
 
-    const response = await apiClient.post('/collaboration-activity', formData);
+    const response = await apiClient.post('/collaboration-activity', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   } catch (error) {
-    throw error.response?.data || error.message;
+    // If it's a 422, error.response.data usually contains a 'detail' array
+    const serverError = error.response?.data?.detail;
+
+    if (Array.isArray(serverError)) {
+      // Take the first error message and its location (e.g., "body.project_id: field required")
+      const msg = serverError.map(err => `${err.loc.join('.')}: ${err.msg}`).join(', ');
+      throw new Error(msg);
+    }
+
+    throw error.response?.data?.message || error.message || "An unknown error occurred";
   }
 };
 
@@ -158,7 +169,9 @@ export const updateCollaborationActivity = async (id, data) => {
       }
     });
 
-    const response = await apiClient.put(`/collaboration-activity/${id}`, formData);
+    const response = await apiClient.put(`/collaboration-activity/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -190,17 +203,44 @@ export const rejectCollaborationActivity = async (id, remarks) => {
 };
 
 /**
- * Request clarification on a submitted activity (HOD / Admin only).
+ * Initial request for clarification (HOD / Admin only). Changes status to CLARIFICATION_REQUESTED.
  */
-export const clarifyCollaborationActivity = async (id, remarks) => {
+export const requestClarification = async (id, remarks) => {
   try {
     const formData = new URLSearchParams();
     formData.append('remarks', remarks);
-    const response = await apiClient.post(
-      `/collaboration-activity/${id}/clarify`,
+    const response = await apiClient.put(
+      `/collaboration-activity/${id}/request-clarification`,
       formData.toString(),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Send a reply in the clarification thread.
+ */
+export const sendClarificationReply = async (id, message) => {
+  try {
+    const response = await apiClient.post(
+      `/collaboration-activity/${id}/clarify`,
+      { message }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Get all clarifications for an activity.
+ */
+export const getClarifications = async (id) => {
+  try {
+    const response = await apiClient.get(`/collaboration-activity/${id}/clarifications`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;

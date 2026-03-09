@@ -101,7 +101,7 @@ const DataEntry = () => {
             erp_academic_year_id: parseInt(context.academic_year_id),
             quarter_id: parseInt(context.quarter_id),
             university_id: activityData.university_id || undefined,
-            numeric_value: activityData.numeric_value,
+            numeric_value: (activityData.numeric_value !== null && activityData.numeric_value !== undefined && activityData.numeric_value !== '') ? Number(activityData.numeric_value) : undefined,
             activity_title: activityData.activity_title || undefined,
             start_date: activityData.start_date || undefined,
             end_date: activityData.end_date || undefined,

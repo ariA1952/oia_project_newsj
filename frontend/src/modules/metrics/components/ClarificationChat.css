@@ -102,6 +102,36 @@
     color: #1e3a8a;
 }
 
+.clarification-chat__time {
+    font-size: 10px;
+    color: #9ca3af;
+    margin-top: 4px;
+    display: block;
+}
+
+.clarification-chat--loading {
+    padding: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .clarification-chat__input-area {
     padding: 16px;
     background: #ffffff;
