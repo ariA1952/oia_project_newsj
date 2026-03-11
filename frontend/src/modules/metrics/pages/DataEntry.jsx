@@ -380,6 +380,7 @@ const DataEntry = () => {
                                                 }}
                                                 disabled={(!mappingId && !isContextSelected) || (activity?.status && activity?.status !== 'DRAFT' && activity?.status !== 'REJECTED' && activity?.status !== 'CLARIFICATION_REQUESTED')}
                                                 isContextSelected={isContextSelected}
+                                                hasSubmittedSibling={activities.some(a => a?.status === 'SUBMITTED')}
                                             />
                                         ));
                                     })

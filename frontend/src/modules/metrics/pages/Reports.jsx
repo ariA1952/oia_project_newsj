@@ -159,11 +159,19 @@ const Reports = () => {
     };
 
     const getDepartmentNameByMapping = (mapId) => {
-        // If the mapping exists in masterData, we can resolve it.
-        // For now, if masterData only has departments, we might need to show the ID or 
-        // find the department linked to this mapping.
-        // Assuming masterData has a way to resolve mappings to readable names.
-        return `Department (ID: ${mapId})`;
+        const mapping = masterData.mappings?.find(
+            (m) => m.erp_campus_department_mapping_id === mapId
+        );
+        if (!mapping) return `Dept (ID: ${mapId})`;
+        const dept = masterData.departments?.find(
+            (d) => d.erp_department_id === mapping.dept_id
+        );
+        const campus = masterData.campuses?.find(
+            (c) => c.erp_campus_id === mapping.campus_id
+        );
+        const deptName = dept?.department_name || `Dept ${mapping.dept_id}`;
+        const campusName = campus?.campus_name || `Campus ${mapping.campus_id}`;
+        return `${deptName} (${campusName})`;
     };
 
     const handleDownloadExcel = () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Activity,
     FileText,
@@ -6,7 +6,6 @@ import {
     GraduationCap,
     Users,
     ChevronLeft,
-    Search,
     AlertCircle
 } from 'lucide-react';
 import KPIWidget from '../components/KPIWidget';
@@ -16,7 +15,7 @@ import Notification from '../../../common/Notification';
 import ActionButton from '../../../common/ActionButton';
 import { useAuth } from '../../../common/AuthContext';
 import useMetricsMasterData from '../hooks/useMetricsMasterData';
-import { getCollaborationActivities } from '../services/metricsService';
+import { getCollaborationActivities, getMOUs } from '../services/metricsService';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -46,56 +45,77 @@ const Dashboard = () => {
     });
 
     const [selectedKPI, setSelectedKPI] = useState(null);
+    // Resolved parameter IDs from master data (populated after masterData loads)
+    const [paramIds, setParamIds] = useState({});
 
+    // Resolve parameter IDs once masterData is available
     useEffect(() => {
-        fetchActivities();
-    }, [filters, mappingId]);
+        if (!masterData.parameters?.length) return;
+        const find = (keyword) =>
+            masterData.parameters.find(p =>
+                p.parameter_name?.toLowerCase().includes(keyword.toLowerCase())
+            )?.parameter_id ?? null;
+        setParamIds({
+            studentExchange: find('Student Exchange'),
+            facultyExchange: find('Faculty Exchange'),
+            conference:      find('Conference'),
+            publications:    find('Joint Publication'),
+        });
+    }, [masterData.parameters]);
 
-    const fetchActivities = async () => {
+    const fetchActivities = useCallback(async () => {
         setLoading(true);
         try {
             const queryParams = {
                 ...filters,
-                erp_campus_department_mapping_id: mappingId || undefined,
+                // Admins see all departments; non-admins are restricted to their mapping
+                ...(!isAdmin && mappingId ? { erp_campus_department_mapping_id: mappingId } : {}),
             };
-            const data = await getCollaborationActivities(queryParams);
+
+            // Fetch activities and MOUs in parallel
+            const [data, mous] = await Promise.all([
+                getCollaborationActivities(queryParams),
+                getMOUs().catch(() => []),
+            ]);
 
             setActivities(data);
-            computeKPIs(data);
+            computeKPIs(data, mous);
         } catch (error) {
-            setNotification({
-                message: 'Failed to fetch activities',
-                type: 'error',
-            });
+            setNotification({ message: 'Failed to fetch activities', type: 'error' });
         } finally {
             setLoading(false);
         }
-    };
+    }, [filters, mappingId, isAdmin, paramIds]);
 
-    const computeKPIs = (data) => {
-        const approvedData = data.filter(a => a.status === 'APPROVED');
-        const rejectedData = data.filter(a => a.status === 'REJECTED');
+    useEffect(() => {
+        fetchActivities();
+    }, [fetchActivities]);
 
-        const parameterGroups = approvedData.reduce((acc, activity) => {
-            const paramId = activity.parameter_id;
-            if (!acc[paramId]) {
-                acc[paramId] = [];
-            }
-            acc[paramId].push(activity);
-            return acc;
-        }, {});
+    const computeKPIs = (data, mous = []) => {
+        // Only count APPROVED activities
+        const approved = data.filter(a => a.status === 'APPROVED');
+        const rejected = data.filter(a => a.status === 'REJECTED');
 
-        // Mapping standard parameters based on schema:
-        // Note: Assumed mapping IDs.
+        // Helper: count approved records for a given parameter_id
+        const countByParam = (pid) =>
+            pid != null ? approved.filter(a => a.parameter_id === pid).length : 0;
+
+        // Publications: sum numeric_value of all approved Joint Publication records
+        const pubRecords = paramIds.publications != null
+            ? approved.filter(a => a.parameter_id === paramIds.publications)
+            : [];
+        const totalPublications = pubRecords.reduce((sum, a) => sum + (Number(a.numeric_value) || 0), 0)
+            || pubRecords.length;
+
         setKpis({
-            totalMOUs: (parameterGroups[1] || []).length,
-            totalApproved: approvedData.length,
-            totalPublications: (parameterGroups[2] || []).reduce((sum, a) => sum + (a.numeric_value || 0), 0) || (parameterGroups[2] || []).length,
-            facultyExchange: (parameterGroups[4] || []).length,
-            studentExchange: (parameterGroups[3] || []).length,
-            totalConference: (parameterGroups[5] || []).length, // Assumed ID 5 for conference
-            totalJointResearch: (parameterGroups[6] || []).length, // Assumed ID 6 for joint research
-            totalRejected: rejectedData.length,
+            totalMOUs:        mous.length,
+            totalApproved:    approved.length,
+            totalPublications,
+            facultyExchange:  countByParam(paramIds.facultyExchange),
+            studentExchange:  countByParam(paramIds.studentExchange),
+            totalConference:  countByParam(paramIds.conference),
+            totalJointResearch: pubRecords.length,   // count of joint publication records
+            totalRejected:    rejected.length,
         });
     };
 
@@ -186,49 +206,49 @@ const Dashboard = () => {
                         value={kpis.totalMOUs}
                         icon={<FileText size={20} />}
                         color="#16a34a"
-                        onClick={() => setSelectedKPI({ id: 1, title: 'Total MOUs' })}
+                        onClick={() => setSelectedKPI({ id: 'MOUS', title: 'Total MOUs' })}
                     />
                     <KPIWidget
                         title="Total Approved"
                         value={kpis.totalApproved}
                         icon={<Activity size={20} />}
                         color="#2563eb"
-                        onClick={() => setSelectedKPI({ id: 'APPROVED', title: 'Total Approved Overview' })}
+                        onClick={() => setSelectedKPI({ id: 'APPROVED', title: 'All Approved Activities' })}
                     />
                     <KPIWidget
                         title="Total Publication"
                         value={kpis.totalPublications}
                         icon={<BookOpen size={20} />}
                         color="#7c3aed"
-                        onClick={() => setSelectedKPI({ id: 2, title: 'Publications' })}
+                        onClick={() => setSelectedKPI({ id: paramIds.publications, title: 'Joint Publications' })}
                     />
                     <KPIWidget
                         title="Total Faculty Exchange"
                         value={kpis.facultyExchange}
                         icon={<Users size={20} />}
                         color="#0891b2"
-                        onClick={() => setSelectedKPI({ id: 4, title: 'Faculty Exchange' })}
+                        onClick={() => setSelectedKPI({ id: paramIds.facultyExchange, title: 'Faculty Exchange' })}
                     />
                     <KPIWidget
                         title="Total Student Exchange"
                         value={kpis.studentExchange}
                         icon={<GraduationCap size={20} />}
                         color="#ea580c"
-                        onClick={() => setSelectedKPI({ id: 3, title: 'Student Exchange' })}
+                        onClick={() => setSelectedKPI({ id: paramIds.studentExchange, title: 'Student Exchange Programs' })}
                     />
                     <KPIWidget
                         title="Total Conference"
                         value={kpis.totalConference}
-                        icon={<Users size={20} />} // Reusing icon for demonstration
+                        icon={<Users size={20} />}
                         color="#d97706"
-                        onClick={() => setSelectedKPI({ id: 5, title: 'Conferences' })}
+                        onClick={() => setSelectedKPI({ id: paramIds.conference, title: 'Conferences' })}
                     />
                     <KPIWidget
                         title="Total Joint Research"
                         value={kpis.totalJointResearch}
                         icon={<Activity size={20} />}
                         color="#4f46e5"
-                        onClick={() => setSelectedKPI({ id: 6, title: 'Joint Research' })}
+                        onClick={() => setSelectedKPI({ id: paramIds.publications, title: 'Joint Research Records' })}
                     />
                     <KPIWidget
                         title="Total Rejected"

@@ -17,7 +17,7 @@ import {
     requestClarification,
     sendClarificationReply,
     getClarifications,
-    getActivityDocumentUrl,
+    downloadActivityDocument,
 } from '../services/metricsService';
 import './Review.css';
 
@@ -169,12 +169,9 @@ const Review = () => {
         }
 
         try {
-            // 1. Move the status to CLARIFICATION_REQUESTED first
+            // requestClarification sets status to CLARIFICATION_REQUESTED and saves the message
+            // in the ActivityClarification table (and sets rejection_remarks on the activity)
             await requestClarification(clarifyModal.activityId, clarifyRemarks.trim());
-
-            // 2. Now that status is CLARIFICATION_REQUESTED, we can update rejection_remarks
-            // so it's visible in the list view note/reason immediately
-            await updateCollaborationActivity(clarifyModal.activityId, { rejection_remarks: clarifyRemarks.trim() });
 
             setNotification({ message: 'Clarification requested from faculty', type: 'success' });
             setClarifyModal({ show: false, activityId: null });
@@ -208,6 +205,16 @@ const Review = () => {
             refreshData();
         } catch (error) {
             setNotification({ message: error?.detail || 'Failed to resubmit', type: 'error' });
+        }
+    };
+
+    // Open activity document using auth header (blob URL)
+    const handleViewDocument = async (activityId) => {
+        try {
+            const blobUrl = await downloadActivityDocument(activityId);
+            window.open(blobUrl, '_blank');
+        } catch {
+            setNotification({ message: 'Failed to load document', type: 'error' });
         }
     };
 
@@ -303,9 +310,7 @@ const Review = () => {
                                                         const isSubmitted = activity.status === 'SUBMITTED';
                                                         const isApproved = activity.status === 'APPROVED';
                                                         const isRejected = activity.status === 'REJECTED';
-                                                        const docUrl = activity.document_path
-                                                            ? getActivityDocumentUrl(activity.activity_id)
-                                                            : null;
+                                                        const docUrl = !!activity.document_path;
 
                                                         return (
                                                             <div key={activity.activity_id} className="review__activity-card">
@@ -340,13 +345,18 @@ const Review = () => {
                                                                             <strong>Notes:</strong> {activity.activity_data.remarks}
                                                                         </div>
                                                                     )}
-                                                                    {/* Document */}
+                                                                     {/* Document */}
                                                                     {docUrl && (
                                                                         <div className="review__activity-row">
                                                                             <strong>Document:</strong>{' '}
-                                                                            <a href={docUrl} target="_blank" rel="noopener noreferrer" className="review__doc-link">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleViewDocument(activity.activity_id)}
+                                                                                className="review__doc-link"
+                                                                                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                                                                            >
                                                                                 View / Download
-                                                                            </a>
+                                                                            </button>
                                                                         </div>
                                                                     )}
                                                                     {/* Status */}
@@ -431,7 +441,7 @@ const Review = () => {
                                                                     const isSubmitted = activity.status === 'SUBMITTED';
                                                                     const isApproved = activity.status === 'APPROVED';
                                                                     const isRejected = activity.status === 'REJECTED';
-                                                                    const docUrl = activity.document_path ? getActivityDocumentUrl(activity.activity_id) : null;
+                                                                    const docUrl = !!activity.document_path;
 
                                                                     return (
                                                                         <Fragment key={activity.activity_id}>
@@ -439,7 +449,7 @@ const Review = () => {
                                                                                 <td>
                                                                                     <div className="review__table-title">{activity.activity_title || 'N/A'}</div>
                                                                                     {activity.activity_data?.remarks && <div className="review__table-remarks">{activity.activity_data.remarks}</div>}
-                                                                                    {docUrl && <a href={docUrl} target="_blank" rel="noopener noreferrer" className="review__doc-link">View Doc</a>}
+                                                                                    {docUrl && <button type="button" onClick={() => handleViewDocument(activity.activity_id)} className="review__doc-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>View Doc</button>}
 
                                                                                     {(isRejected || isClarificationRequested) && activity.rejection_remarks && (
                                                                                         <div className={`review__activity-remarks ${isClarificationRequested ? 'review__activity-remarks--clarify' : ''}`} style={{ marginTop: '8px' }}>

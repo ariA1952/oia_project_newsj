@@ -63,7 +63,7 @@ const ClarificationChat = ({ activity, onReply }) => {
                 ) : (
                     messages.map((msg) => {
                         const isOwner = msg.sender_user_id === user?.erp_users_id;
-                        const senderName = isOwner ? 'You' : (msg.sender_role || 'Reviewer');
+                        const senderName = `User ${msg.sender_user_id}`;
 
                         return (
                             <div

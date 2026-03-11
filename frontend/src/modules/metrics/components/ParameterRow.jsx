@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { AlertCircle, FileText, ExternalLink, Upload, X } from 'lucide-react';
 import ActionButton from '../../../common/ActionButton';
 import { useAuth } from '../../../common/AuthContext';
-import { getActivityDocumentUrl } from '../services/metricsService';
+import { downloadActivityDocument } from '../services/metricsService';
 import './ParameterRow.css';
 
 const ParameterRow = ({
@@ -15,6 +15,7 @@ const ParameterRow = ({
     onAdd,
     disabled = false,
     isContextSelected = false,
+    hasSubmittedSibling = false,
 }) => {
     const { user } = useAuth();
     const isHOD = user?.erp_users_type === 'HOD';
@@ -57,16 +58,48 @@ const ParameterRow = ({
 
     const validate = () => {
         const newErrors = {};
-        if (!formData.numeric_value && formData.numeric_value !== 0) {
+        const numVal = formData.numeric_value;
+        if (numVal === '' || numVal === null || numVal === undefined) {
             newErrors.numeric_value = 'Numeric value is required';
-        } else if (parseFloat(formData.numeric_value) < 0) {
-            newErrors.numeric_value = 'Value cannot be negative';
+        } else {
+            const parsed = parseFloat(numVal);
+            if (isNaN(parsed)) {
+                newErrors.numeric_value = 'Value must be a valid number';
+            } else if (parsed < 0) {
+                newErrors.numeric_value = 'Value cannot be negative';
+            }
         }
         if (formData.start_date && formData.end_date && formData.start_date > formData.end_date) {
             newErrors.end_date = 'End date must be after start date';
         }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
+    };
+
+    // Block non-numeric keystrokes (e, E, +, -) on the number input
+    const handleNumericKeyDown = (e) => {
+        if (['e', 'E', '+', '-'].includes(e.key)) {
+            e.preventDefault();
+        }
+    };
+
+    // Strip any non-numeric characters (except a single decimal point) on change
+    const handleNumericChange = (e) => {
+        const raw = e.target.value;
+        // Allow digits and at most one decimal point; block everything else
+        const clean = raw.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
+        setFormData(prev => ({ ...prev, numeric_value: clean }));
+    };
+
+    // Open document via authenticated fetch → Blob URL
+    const handleViewDocument = async () => {
+        if (!existingData?.activity_id) return;
+        try {
+            const blobUrl = await downloadActivityDocument(existingData.activity_id);
+            window.open(blobUrl, '_blank');
+        } catch {
+            alert('Failed to load document. Please try again.');
+        }
     };
 
     const handleSave = () => {
@@ -113,10 +146,6 @@ const ParameterRow = ({
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const documentUrl = existingData?.activity_id
-        ? getActivityDocumentUrl(existingData.activity_id)
-        : null;
-
     const statusClass = existingData?.status?.toLowerCase().replace('_', '-') || 'none';
 
     return (
@@ -155,7 +184,8 @@ const ParameterRow = ({
                         className={`parameter-row__input-number ${errors.numeric_value ? 'input-error' : ''}`}
                         placeholder="0"
                         value={formData.numeric_value}
-                        onChange={(e) => setFormData(prev => ({ ...prev, numeric_value: e.target.value }))}
+                        onChange={handleNumericChange}
+                        onKeyDown={handleNumericKeyDown}
                         disabled={!isEditing || !isEditable || disabled}
                     />
                     {errors.numeric_value && (
@@ -255,20 +285,20 @@ const ParameterRow = ({
                     </div>
                 )}
 
-                {/* Existing Document Link (view mode) */}
+                {/* Existing Document Link (view mode) — uses auth header via blob fetch */}
                 {existingData?.document_path && !isEditing && (
                     <div className="parameter-row__field">
                         <label className="parameter-row__label">Document</label>
-                        <a
-                            href={documentUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <button
+                            type="button"
+                            onClick={handleViewDocument}
                             className="parameter-row__doc-link"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                         >
                             <FileText size={13} />
                             {existingData.document_path.split('/').pop() || 'View Document'}
                             <ExternalLink size={11} style={{ marginLeft: 4 }} />
-                        </a>
+                        </button>
                     </div>
                 )}
             </div>
@@ -335,7 +365,7 @@ const ParameterRow = ({
                         {isHOD && (
                             <span className="action-label">View Only</span>
                         )}
-                        {isContextSelected && !isHOD && (
+                        {isContextSelected && !isHOD && !hasSubmittedSibling && (
                             <ActionButton variant="secondary" onClick={onAdd} title="Add another entry for this parameter">
                                 +
                             </ActionButton>

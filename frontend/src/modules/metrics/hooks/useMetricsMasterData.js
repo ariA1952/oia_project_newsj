@@ -6,6 +6,7 @@ import {
     getDepartments,
     getParameters,
     getPartnerUniversities,
+    getCampusDeptMappings,
 } from '../services/metricsService';
 
 const useMetricsMasterData = () => {
@@ -16,6 +17,7 @@ const useMetricsMasterData = () => {
         departments: [],
         parameters: [],
         universities: [],
+        mappings: [],
     });
 
     const [loading, setLoading] = useState(true);
@@ -34,6 +36,7 @@ const useMetricsMasterData = () => {
                     departments,
                     parameters,
                     universities,
+                    mappings,
                 ] = await Promise.all([
                     getAcademicYears().catch(() => []),
                     getQuarters().catch(() => []),
@@ -41,6 +44,7 @@ const useMetricsMasterData = () => {
                     getDepartments().catch(() => []),
                     getParameters().catch(() => []),
                     getPartnerUniversities().catch(() => []),
+                    getCampusDeptMappings().catch(() => []),
                 ]);
 
                 setMasterData({
@@ -50,6 +54,7 @@ const useMetricsMasterData = () => {
                     departments,
                     parameters,
                     universities,
+                    mappings,
                 });
             } catch (err) {
                 setError(err.message || 'Failed to fetch master data');
@@ -73,6 +78,7 @@ const useMetricsMasterData = () => {
                 departments,
                 parameters,
                 universities,
+                mappings,
             ] = await Promise.all([
                 getAcademicYears().catch(() => []),
                 getQuarters().catch(() => []),
@@ -80,6 +86,7 @@ const useMetricsMasterData = () => {
                 getDepartments().catch(() => []),
                 getParameters().catch(() => []),
                 getPartnerUniversities().catch(() => []),
+                getCampusDeptMappings().catch(() => []),
             ]);
 
             setMasterData({
@@ -89,6 +96,7 @@ const useMetricsMasterData = () => {
                 departments,
                 parameters,
                 universities,
+                mappings,
             });
         } catch (err) {
             setError(err.message || 'Failed to refresh master data');

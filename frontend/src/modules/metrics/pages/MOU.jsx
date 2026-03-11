@@ -11,7 +11,7 @@ import useMetricsMasterData from '../hooks/useMetricsMasterData';
 import {
     getMOUs,
     createMOU,
-    getMOUDocumentUrl,
+    downloadMOUDocument,
 } from '../services/metricsService';
 import './MOU.css';
 
@@ -46,6 +46,16 @@ const MOU = () => {
     const [editingMOU, setEditingMOU] = useState(null);
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [formLoading, setFormLoading] = useState(false);
+
+    // Open MOU document via authenticated fetch → blob URL
+    const handleViewMOUDocument = async (mouId) => {
+        try {
+            const blobUrl = await downloadMOUDocument(mouId);
+            window.open(blobUrl, '_blank');
+        } catch {
+            setNotification({ message: 'Failed to load document', type: 'error' });
+        }
+    };
 
     useEffect(() => {
         fetchMOUs();
@@ -236,16 +246,16 @@ const MOU = () => {
                                     {/* Document */}
                                     <div className="mou__col">
                                         {mou.document_path ? (
-                                            <a
-                                                href={getMOUDocumentUrl(mou.mou_id)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                            <button
+                                                type="button"
+                                                onClick={() => handleViewMOUDocument(mou.mou_id)}
                                                 className="mou__doc-link"
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                                             >
                                                 <FileText size={14} />
                                                 View Doc
                                                 <ExternalLink size={12} style={{ marginLeft: 4 }} />
-                                            </a>
+                                            </button>
                                         ) : (
                                             <span className="mou__no-doc">No document</span>
                                         )}

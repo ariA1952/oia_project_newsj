@@ -285,8 +285,24 @@ export const getDraftActivities = async (filters = {}) => {
 };
 
 /**
- * Get the download URL for an activity document.
- * Returns a URL string that can be used as an <a href> target.
+ * Download an activity document with auth via header, returns a temporary Blob URL.
+ * Use: const url = await downloadActivityDocument(id);  window.open(url, '_blank');
+ */
+export const downloadActivityDocument = async (id) => {
+  try {
+    const response = await apiClient.get(
+      `/collaboration-activity/${id}/document`,
+      { responseType: 'blob' }
+    );
+    return URL.createObjectURL(response.data);
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * @deprecated Use downloadActivityDocument(id) instead.
+ * Returns a URL with the token embedded as a query parameter (auth header not sent).
  */
 export const getActivityDocumentUrl = (id) => {
   const token = localStorage.getItem('token');
@@ -340,8 +356,21 @@ export const createMOU = async (data) => {
 };
 
 /**
- * Returns a URL for downloading an MOU document.
+ * Download an MOU document with auth via header, returns a temporary Blob URL.
  */
+export const downloadMOUDocument = async (id) => {
+  try {
+    const response = await apiClient.get(
+      `/mou/${id}/document`,
+      { responseType: 'blob' }
+    );
+    return URL.createObjectURL(response.data);
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/** @deprecated Use downloadMOUDocument(id) instead. */
 export const getMOUDocumentUrl = (id) => {
   const token = localStorage.getItem('token');
   return `${API_BASE_URL}/mou/${id}/document?token=${token}`;
@@ -385,6 +414,19 @@ export const getDepartments = async (campusId) => {
     return response.data;
   } catch (error) {
     console.warn('Departments endpoint failed');
+    return [];
+  }
+};
+
+/**
+ * Fetch all campus-department mappings to resolve erp_campus_department_mapping_id → names.
+ */
+export const getCampusDeptMappings = async () => {
+  try {
+    const response = await apiClient.post('/campus-dept-mappings', {});
+    return response.data;
+  } catch (error) {
+    console.warn('Campus-dept mappings endpoint failed');
     return [];
   }
 };
