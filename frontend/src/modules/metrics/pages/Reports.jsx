@@ -35,7 +35,7 @@ const Reports = () => {
     const [pieChartTitle, setPieChartTitle] = useState('');
 
     useEffect(() => {
-        if (filters.academic_year_id && filters.quarter_id) {
+        if (filters.academic_year_id) {
             fetchActivities();
         }
     }, [filters, mappingId]);
