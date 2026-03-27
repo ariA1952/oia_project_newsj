@@ -1,20 +1,28 @@
+import { ChevronRight } from 'lucide-react';
 import './KPIWidget.css';
 
 const KPIWidget = ({ title, value, icon, color = '#2563eb', onClick }) => {
     return (
         <div
             className={`kpi-widget ${onClick ? 'kpi-widget--clickable' : ''}`}
-            style={{ borderTopColor: color }}
+            style={{ '--kpi-accent': color }}
             onClick={onClick}
         >
             <div className="kpi-widget__header">
-                {icon && <span className="kpi-widget__icon">{icon}</span>}
-                <h3 className="kpi-widget__title">{title}</h3>
+                <span className="kpi-widget__icon">{icon}</span>
+                {onClick && (
+                    <span className="kpi-widget__chevron">
+                        <ChevronRight size={16} />
+                    </span>
+                )}
             </div>
-            <div className="kpi-widget__value">{value}</div>
-            {onClick && <div className="kpi-widget__footer">Click to view details →</div>}
+            <div className="kpi-widget__body">
+                <span className="kpi-widget__value">{value}</span>
+                <span className="kpi-widget__title">{title}</span>
+            </div>
         </div>
     );
 };
 
 export default KPIWidget;
+

@@ -5,7 +5,6 @@ import {
   FileCheck,
   BarChart3,
   LogOut,
-  User as UserIcon,
   Building2,
   FileText
 }
@@ -66,21 +65,20 @@ const Sidebar = () => {
       </nav>
 
       <div className="sidebar-footer">
-        <div className="user-info">
+        <div className="sidebar-footer__row">
           <div className="user-avatar">
-            <UserIcon size={20} />
+            {String(user?.erp_users_name || user?.id || 'U').charAt(0).toUpperCase()}
           </div>
           <div className="user-details">
-            <span className="user-name">{user?.id || 'User'}</span>
+            <span className="user-name">{user?.erp_users_name || user?.id || 'User'}</span>
             <span className="user-role">
               {user?.erp_users_type?.replace('_', ' ') || 'Guest'}
             </span>
           </div>
+          <button onClick={logout} className="logout-button" title="Logout">
+            <LogOut size={18} />
+          </button>
         </div>
-        <button onClick={logout} className="logout-button">
-          <LogOut size={16} />
-          <span>Logout</span>
-        </button>
       </div>
     </div>
   );
