@@ -25,7 +25,7 @@ const Review = () => {
     const { user } = useAuth();
     const userRole = user?.erp_users_type;
     const mappingId = user?.erp_campus_department_mapping_id;
-    const canActOnActivities = userRole === 'HOD' || userRole === 'OIA_ADMIN';
+    const canActOnActivities = ['HOD', 'COORDINATOR', 'OIA_ADMIN', 'SUPER_ADMIN'].includes(userRole);
 
     const { masterData, loading: masterDataLoading } = useMetricsMasterData();
     const { profile, loading: profileLoading } = useUserProfile();
@@ -79,12 +79,12 @@ const Review = () => {
             let data = allActivities;
             if (userRole === 'FACULTY') {
                 data = allActivities; // Faculty sees all their own activities for tracking
-            } else if (userRole === 'HOD') {
+            } else if (['HOD', 'COORDINATOR'].includes(userRole)) {
                 // HOD sees SUBMITTED + APPROVED + REJECTED + CLARIFICATION_REQUESTED
                 data = allActivities.filter(a =>
                     ['SUBMITTED', 'APPROVED', 'REJECTED', 'CLARIFICATION_REQUESTED'].includes(a.status)
                 );
-            } else if (userRole === 'OIA_ADMIN') {
+            } else if (['OIA_ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
                 // Admin sees everything except DRAFT
                 data = allActivities.filter(a => a.status !== 'DRAFT');
             }

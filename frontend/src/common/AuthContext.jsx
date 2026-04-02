@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }) => {
                         id: tokenParsed.preferred_username || kc.subject,
                         erp_users_type: tokenParsed.erp_users_type || 'OIA_ADMIN',
                         erp_campus_department_mapping_id: tokenParsed.erp_campus_department_mapping_id || 1,
-                        isAdmin: (tokenParsed.erp_users_type || 'OIA_ADMIN') === 'OIA_ADMIN',
+                        isAdmin: ['OIA_ADMIN', 'SUPER_ADMIN'].includes(tokenParsed.erp_users_type),
                     };
 
                     setUser(userData);
@@ -144,7 +144,7 @@ export const AuthProvider = ({ children }) => {
             id: data.erp_users_id,
             erp_users_type: data.erp_users_type,
             erp_campus_department_mapping_id: data.erp_campus_department_mapping_id,
-            isAdmin: data.erp_users_type === 'OIA_ADMIN',
+            isAdmin: ['OIA_ADMIN', 'SUPER_ADMIN'].includes(data.erp_users_type),
         };
 
         setToken(data.access_token);

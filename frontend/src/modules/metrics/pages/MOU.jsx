@@ -33,7 +33,7 @@ const StatusBadge = ({ status }) => (
 
 const MOU = () => {
     const { user } = useAuth();
-    const isAdmin = user?.erp_users_type === 'OIA_ADMIN';
+    const isAdmin = ['OIA_ADMIN', 'SUPER_ADMIN'].includes(user?.erp_users_type);
     // Faculty and HOD are both view-only
     const isViewOnly = !isAdmin;
 

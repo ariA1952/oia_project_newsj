@@ -18,7 +18,7 @@ const ParameterRow = ({
     hasSubmittedSibling = false,
 }) => {
     const { user } = useAuth();
-    const isHOD = user?.erp_users_type === 'HOD';
+    const isHOD = ['HOD', 'COORDINATOR'].includes(user?.erp_users_type);
     const fileInputRef = useRef(null);
 
     const [isEditing, setIsEditing] = useState(!existingData);

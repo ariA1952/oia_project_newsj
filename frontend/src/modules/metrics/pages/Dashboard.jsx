@@ -21,7 +21,7 @@ import './Dashboard.css';
 const Dashboard = () => {
     const { user } = useAuth();
     const mappingId = user?.erp_campus_department_mapping_id;
-    const isAdmin = user?.erp_users_type === 'OIA_ADMIN';
+    const isAdmin = ['OIA_ADMIN', 'SUPER_ADMIN'].includes(user?.erp_users_type);
 
     const { masterData, loading: masterDataLoading } = useMetricsMasterData();
     const [filters, setFilters] = useState({

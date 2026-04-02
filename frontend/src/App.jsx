@@ -31,7 +31,7 @@ const Sidebar = () => {
       path: '/data-entry',
       label: 'Data Entry',
       icon: <ClipboardList size={20} />,
-      roles: ['OIA_ADMIN', 'FACULTY'],   // HOD cannot enter data
+      roles: ['OIA_ADMIN', 'SUPER_ADMIN', 'FACULTY'],   // HOD cannot enter data
     },
     { path: '/review', label: 'Review', icon: <FileCheck size={20} /> },
     { path: '/reports', label: 'Reports', icon: <BarChart3 size={20} /> },

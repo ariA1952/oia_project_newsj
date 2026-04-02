@@ -13,7 +13,7 @@ import './Partners.css';
 
 const Partners = () => {
     const { user } = useAuth();
-    const isAdmin = user?.erp_users_type === 'OIA_ADMIN';
+    const isAdmin = ['OIA_ADMIN', 'SUPER_ADMIN'].includes(user?.erp_users_type);
 
     const [universities, setUniversities] = useState([]);
     const [loading, setLoading] = useState(false);

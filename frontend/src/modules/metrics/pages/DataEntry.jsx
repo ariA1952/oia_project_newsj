@@ -16,7 +16,7 @@ import './DataEntry.css';
 
 const DataEntry = () => {
     const { user } = useAuth();
-    const isHOD = user?.erp_users_type === 'HOD';
+    const isHOD = ['HOD', 'COORDINATOR'].includes(user?.erp_users_type);
     const { masterData, loading: masterDataLoading, error: masterDataError } = useMetricsMasterData();
     const { profile, loading: profileLoading } = useUserProfile();
     const [context, setContext] = useState({
@@ -353,7 +353,7 @@ const DataEntry = () => {
                                         let activities = existingActivities[String(parameter.parameter_id)] || [null];
 
                                         // NEW: For Admin and Faculty, hide APPROVED rows in data entry view
-                                        if (user?.erp_users_type === 'OIA_ADMIN' || user?.erp_users_type === 'FACULTY') {
+                                        if (['OIA_ADMIN', 'SUPER_ADMIN', 'FACULTY'].includes(user?.erp_users_type)) {
                                             activities = activities.filter(a => !a || a.status !== 'APPROVED');
                                             // If we filtered everything out, show a blank row to allow new entries
                                             if (activities.length === 0) {

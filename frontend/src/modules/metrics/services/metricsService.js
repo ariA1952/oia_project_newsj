@@ -352,8 +352,6 @@ export const createMOU = async (data) => {
   }
 };
 
-/**
-};
 
 /**
  * Download an MOU document with auth via header, returns a temporary Blob URL.
