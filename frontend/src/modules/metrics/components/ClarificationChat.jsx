@@ -5,7 +5,7 @@ import { useAuth } from '../../../common/AuthContext';
 import { getClarifications } from '../services/metricsService';
 import './ClarificationChat.css';
 
-const ClarificationChat = ({ activity, onReply }) => {
+const ClarificationChat = ({ activity, onReply, readOnly = false }) => {
     const { user } = useAuth();
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -86,6 +86,7 @@ const ClarificationChat = ({ activity, onReply }) => {
                 )}
             </div>
 
+            {!readOnly && (
             <div className="clarification-chat__input-area">
                 <textarea
                     className="clarification-chat__textarea"
@@ -99,6 +100,7 @@ const ClarificationChat = ({ activity, onReply }) => {
                     Reply
                 </ActionButton>
             </div>
+            )}
         </div>
     );
 };

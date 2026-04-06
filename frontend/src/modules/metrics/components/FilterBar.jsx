@@ -93,6 +93,23 @@ const FilterBar = ({ filters, onChange, masterData, loading }) => {
                     ))}
                 </select>
             </div>
+
+            <div className="filter-bar__group">
+                <label className="filter-bar__label">University</label>
+                <select
+                    className="filter-bar__select"
+                    value={filters.university_id || ''}
+                    onChange={(e) => handleChange('university_id', e.target.value)}
+                    disabled={loading}
+                >
+                    <option value="">All Universities</option>
+                    {masterData.universities.map((university) => (
+                        <option key={university.university_id} value={university.university_id}>
+                            {university.university_name}
+                        </option>
+                    ))}
+                </select>
+            </div>
         </div>
     );
 };

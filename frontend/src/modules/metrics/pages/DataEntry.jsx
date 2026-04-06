@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Info, ShieldOff } from 'lucide-react';
 import ParameterRow from '../components/ParameterRow';
 import Loader from '../../../common/Loader';
@@ -6,48 +7,58 @@ import Notification from '../../../common/Notification';
 import { useAuth } from '../../../common/AuthContext';
 import useMetricsMasterData from '../hooks/useMetricsMasterData';
 import useUserProfile from '../hooks/useUserProfile';
+import { getParamConfig } from '../config/parameterConfigs';
 import {
     getCollaborationActivities,
     createCollaborationActivity,
     updateCollaborationActivity,
     submitCollaborationActivity,
+    deleteCollaborationActivity,
 } from '../services/metricsService';
 import './DataEntry.css';
 
 const DataEntry = () => {
     const { user } = useAuth();
-    const isHOD = ['HOD', 'COORDINATOR'].includes(user?.erp_users_type);
+    const [searchParams] = useSearchParams();
+    const userRole = user?.erp_users_type;
+    const isHOD   = ['HOD', 'COORDINATOR'].includes(userRole);
+    const isAdmin  = ['OIA_ADMIN', 'SUPER_ADMIN'].includes(userRole);
     const { masterData, loading: masterDataLoading, error: masterDataError } = useMetricsMasterData();
     const { profile, loading: profileLoading } = useUserProfile();
     const [context, setContext] = useState({
-        academic_year_id: '',
-        quarter_id: '',
-        campus_id: '',
-        department_id: '',
+        academic_year_id: searchParams.get('ay_id') || '',
+        quarter_id: searchParams.get('q_id') || '',
+        campus_id: searchParams.get('c_id') || '',
+        department_id: searchParams.get('d_id') || '',
     });
     const [existingActivities, setExistingActivities] = useState({});
     const [loading, setLoading] = useState(false);
     const [notification, setNotification] = useState(null);
-    const [selectedParameterId, setSelectedParameterId] = useState('');
+    const [selectedParameterId, setSelectedParameterId] = useState(searchParams.get('edit_p_id') || '');
     const [searchQuery, setSearchQuery] = useState('');
 
     // If faculty/HOD, lock the mapping to their own
-    const mappingId = user?.erp_campus_department_mapping_id;
+    const mappingId = searchParams.get('m_id') || user?.erp_campus_department_mapping_id;
 
     // Auto-set context from backend profile once loaded
     useEffect(() => {
         if (profileLoading) return;
         setContext(prev => ({
             ...prev,
-            academic_year_id: profile.current_academic_year_id ? String(profile.current_academic_year_id) : prev.academic_year_id,
-            campus_id: profile.campus_id ? String(profile.campus_id) : prev.campus_id,
-            department_id: profile.dept_id ? String(profile.dept_id) : prev.department_id,
+            academic_year_id: prev.academic_year_id || (profile.current_academic_year_id ? String(profile.current_academic_year_id) : ''),
+            campus_id: prev.campus_id || (profile.campus_id ? String(profile.campus_id) : ''),
+            department_id: prev.department_id || (profile.dept_id ? String(profile.dept_id) : ''),
         }));
     }, [profileLoading]);
 
     useEffect(() => {
         if (mappingId || (context.campus_id && context.department_id)) {
             fetchExistingActivities();
+        }
+        // If we have an edit_p_id in URL, make sure the dropdown reflects it
+        const paramId = searchParams.get('edit_p_id');
+        if (paramId && paramId !== selectedParameterId) {
+            setSelectedParameterId(paramId);
         }
     }, [mappingId, context.academic_year_id, context.quarter_id, context.campus_id, context.department_id]);
 
@@ -62,6 +73,8 @@ const DataEntry = () => {
                 academic_year_id: context.academic_year_id,
                 quarter_id: context.quarter_id,
                 erp_campus_department_mapping_id: mappingId || undefined,
+                campus_id: context.campus_id || undefined,
+                department_id: context.department_id || undefined,
             });
 
             // Group activities by parameter_id (Normalize keys to strings for safe lookup)
@@ -93,20 +106,15 @@ const DataEntry = () => {
     const handleSaveActivity = async (activityData, activityId = null) => {
         if (!validateContext()) return;
 
-        // Build the full payload with all new fields
         const payload = {
             parameter_id: activityData.parameter_id,
+            activity_title: activityData.activity_title || undefined,
+            activity_data: activityData.activity_data || undefined,
+            rowFiles: activityData.rowFiles || [],
             campus_id: context.campus_id ? parseInt(context.campus_id) : undefined,
             department_id: context.department_id ? parseInt(context.department_id) : undefined,
             erp_academic_year_id: parseInt(context.academic_year_id),
             quarter_id: parseInt(context.quarter_id),
-            university_id: activityData.university_id || undefined,
-            numeric_value: (activityData.numeric_value !== null && activityData.numeric_value !== undefined && activityData.numeric_value !== '') ? Number(activityData.numeric_value) : undefined,
-            activity_title: activityData.activity_title || undefined,
-            start_date: activityData.start_date || undefined,
-            end_date: activityData.end_date || undefined,
-            activity_data: activityData.activity_data || undefined,
-            document: activityData.document || undefined,
         };
 
         try {
@@ -145,27 +153,28 @@ const DataEntry = () => {
         }
     };
 
+    useEffect(() => {
+        if (!loading && !masterDataLoading && !profileLoading && selectedParameterId && searchParams.get('edit_p_id')) {
+            setTimeout(() => {
+                const el = document.getElementById('active-parameter-row');
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 500);
+        }
+    }, [loading, masterDataLoading, profileLoading, selectedParameterId]);
+
     const handleDeleteActivity = async (activityId) => {
         try {
-            // Remove from local state only — a proper server-side DELETE
-            // endpoint can be added later. For now, just refresh the list.
-            setExistingActivities((prev) => {
-                const updated = { ...prev };
-                Object.keys(updated).forEach((pid) => {
-                    updated[pid] = updated[pid].filter(
-                        (a) => a?.activity_id !== activityId
-                    );
-                    if (updated[pid].length === 0) delete updated[pid];
-                });
-                return updated;
-            });
+            await deleteCollaborationActivity(activityId);
             setNotification({
-                message: 'Activity removed from view. Refresh to reload from server.',
+                message: 'Activity deleted successfully',
                 type: 'success',
             });
+            fetchExistingActivities();
         } catch (error) {
             setNotification({
-                message: 'Failed to remove activity',
+                message: error?.detail || 'Failed to delete activity',
                 type: 'error',
             });
         }
@@ -308,12 +317,21 @@ const DataEntry = () => {
                         >
                             <option value="">-- Choose a Parameter to enter data --</option>
                             {masterData.parameters
-                                .filter(p => p.parameter_name.toLowerCase().includes(searchQuery.toLowerCase()))
-                                .map(p => (
-                                    <option key={p.parameter_id} value={p.parameter_id}>
-                                        {p.parameter_name}
-                                    </option>
-                                ))}
+                                // Non-admins cannot see or select Exchange Students parameter
+                                .filter((p) => {
+                                    const name = p.parameter_name?.toLowerCase() ?? '';
+                                    if (name.includes('exchange student') && !isAdmin) return false;
+                                    return name.includes(searchQuery.toLowerCase());
+                                })
+                                .map((p) => {
+                                    const cfg = getParamConfig(p);
+                                    const adminTag = cfg?.adminOnly ? ' ★ OIA Admin only' : '';
+                                    return (
+                                        <option key={p.parameter_id} value={p.parameter_id}>
+                                            {p.parameter_name}{adminTag}
+                                        </option>
+                                    );
+                                })}
                         </select>
                         <input
                             type="text"
@@ -362,26 +380,32 @@ const DataEntry = () => {
                                         }
 
                                         return activities.map((activity, index) => (
-                                            <ParameterRow
+                                            <div
                                                 key={activity?.activity_id || `new-${parameter.parameter_id}-${index}`}
-                                                parameter={parameter}
-                                                existingData={activity}
-                                                universities={masterData.universities}
-                                                onSave={(data) => handleSaveActivity(data, activity?.activity_id)}
-                                                onDelete={handleDeleteActivity}
-                                                onSubmit={handleSubmitForApproval}
-                                                onAdd={() => {
-                                                    const freshMapping = { ...existingActivities };
-                                                    if (!freshMapping[parameter.parameter_id]) {
-                                                        freshMapping[parameter.parameter_id] = [null];
-                                                    }
-                                                    freshMapping[parameter.parameter_id].push(null);
-                                                    setExistingActivities(freshMapping);
-                                                }}
-                                                disabled={(!mappingId && !isContextSelected) || (activity?.status && activity?.status !== 'DRAFT' && activity?.status !== 'REJECTED' && activity?.status !== 'CLARIFICATION_REQUESTED')}
-                                                isContextSelected={isContextSelected}
-                                                hasSubmittedSibling={activities.some(a => a?.status === 'SUBMITTED')}
-                                            />
+                                                id={index === 0 ? "active-parameter-row" : undefined}
+                                            >
+                                                <ParameterRow
+                                                    parameter={parameter}
+                                                    existingData={activity}
+                                                    universities={masterData.universities}
+                                                    onSave={(data) => handleSaveActivity(data, activity?.activity_id)}
+                                                    onDelete={handleDeleteActivity}
+                                                    onSubmit={handleSubmitForApproval}
+                                                    userRole={userRole}
+                                                    autoEdit={!!searchParams.get('edit_p_id')}
+                                                    onAdd={() => {
+                                                        const freshMapping = { ...existingActivities };
+                                                        if (!freshMapping[parameter.parameter_id]) {
+                                                            freshMapping[parameter.parameter_id] = [null];
+                                                        }
+                                                        freshMapping[parameter.parameter_id].push(null);
+                                                        setExistingActivities(freshMapping);
+                                                    }}
+                                                    disabled={(!mappingId && !isContextSelected) || (activity?.status && activity?.status !== 'DRAFT' && activity?.status !== 'REJECTED' && activity?.status !== 'CLARIFICATION_REQUESTED')}
+                                                    isContextSelected={isContextSelected}
+                                                    hasSubmittedSibling={activities.some(a => a?.status === 'SUBMITTED')}
+                                                />
+                                            </div>
                                         ));
                                     })
                             ) : (

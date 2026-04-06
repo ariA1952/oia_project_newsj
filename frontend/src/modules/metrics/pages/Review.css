@@ -374,3 +374,198 @@
         justify-content: flex-start;
     }
 }
+
+/* ─── Row field summary (RowFieldSummary component) ────────────── */
+
+.review__row-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 4px 0;
+}
+
+.review__row-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 13px;
+    color: #374151;
+    flex-wrap: wrap;
+}
+
+.review__row-field-icon {
+    color: #6b7280;
+    margin-top: 1px;
+    flex-shrink: 0;
+}
+
+.review__row-field-label {
+    font-weight: 600;
+    color: #111827;
+    white-space: nowrap;
+}
+
+.review__row-field--docs {
+    color: #1d4ed8;
+}
+
+/* ─── Rows expand/collapse section ─────────────────────────────── */
+
+.review__rows-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 4px 0;
+}
+
+.review__rows-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.review__rows-toggle:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+/* ─── Individual row cards ──────────────────────────────────────── */
+
+.review__row-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.review__row-card__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #2563eb;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ─── Table extras ──────────────────────────────────────────────── */
+
+.review__table-faculty {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.review__detail-row td {
+    padding: 0 !important;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.review__detail-body {
+    padding: 14px 16px;
+    background: #f9fafb;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ─── Activity status inline ────────────────────────────────────── */
+
+.review__activity-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ─── Clarification chat trigger ────────────────────────────────── */
+
+.review__chat-trigger-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid #fbbf24;
+    border-radius: 6px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin-top: 8px;
+}
+
+.review__chat-trigger-btn:hover {
+    background: #fef3c7;
+    border-color: #f59e0b;
+}
+
+.review__chat-trigger-btn--small {
+    padding: 4px 6px;
+    margin-top: 0;
+}
+
+.review__chat-trigger-btn--small span {
+    display: none;
+}
+
+/* ─── View docs button (faculty view) ───────────────────────────── */
+
+.review__doc-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.review__doc-link-btn:hover {
+    background: #dbeafe;
+}
+
+.review__table-doc-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: transparent;
+    color: #2563eb;
+    border: none;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 2px 4px;
+}
+
+.review__table-doc-btn:hover {
+    text-decoration: underline;
+}
+
+/* ─── Chat modal variant ────────────────────────────────────────── */
+
+.review__modal--chat {
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.review__modal--chat .clarification-chat {
+    flex: 1;
+    max-height: 50vh;
+    margin: 12px 0;
+}

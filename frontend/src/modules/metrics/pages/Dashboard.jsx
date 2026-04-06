@@ -29,6 +29,7 @@ const Dashboard = () => {
         quarter_id: '',
         campus_id: '',
         department_id: '',
+        university_id: '',
     });
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(false);

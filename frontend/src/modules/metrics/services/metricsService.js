@@ -85,6 +85,60 @@ export const updatePartnerUniversity = async (id, data) => {
   }
 };
 
+/**
+ * Faculty or Admin suggests a new partner university.
+ * @param {Object} data - { university_name, university_code, country, website, has_mou_at_submission, document (File) }
+ */
+export const suggestPartnerUniversity = async (data) => {
+  try {
+    const formData = new FormData();
+    formData.append('university_name', data.university_name);
+    formData.append('university_code', data.university_code);
+    if (data.country)  formData.append('country', data.country);
+    if (data.website)  formData.append('website', data.website);
+    formData.append('has_mou_at_submission', data.has_mou_at_submission ? 'true' : 'false');
+    if (data.document instanceof File) formData.append('document', data.document);
+    const response = await apiClient.post('/partner-university/suggest', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/** Admin approves a PENDING_REVIEW university (auto-creates MOU if applicable). */
+export const approvePartnerUniversity = async (id) => {
+  try {
+    const response = await apiClient.patch(`/partner-university/${id}/approve`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/** Admin rejects a PENDING_REVIEW university suggestion. */
+export const rejectPartnerUniversity = async (id) => {
+  try {
+    const response = await apiClient.patch(`/partner-university/${id}/reject`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/** Download the agreement/MOU document attached to a university suggestion. */
+export const downloadUniversityAgreementDocument = async (id) => {
+  try {
+    const response = await apiClient.get(`/partner-university/${id}/agreement-document`, {
+      responseType: 'blob',
+    });
+    return URL.createObjectURL(response.data);
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
 // ─── Collaboration Activity APIs ─────────────────────────────────────────────
 
 export const getCollaborationActivities = async (filters = {}) => {
@@ -118,33 +172,39 @@ export const getCollaborationActivityById = async (id) => {
 export const createCollaborationActivity = async (data) => {
   try {
     const formData = new FormData();
+
+    // Append scalar fields (skip deprecated flat file/uni/date fields)
+    const SKIP_KEYS = new Set(['document', 'numeric_value', 'university_id']);
     Object.entries(data).forEach(([key, value]) => {
+      if (SKIP_KEYS.has(key)) return;
       if (value === undefined || value === null || value === '') return;
-      if (key === 'document') {
-        // File object — append directly
-        formData.append('document', value);
-      } else if (key === 'activity_data' && typeof value === 'object') {
+      if (key === 'activity_data' && typeof value === 'object') {
         formData.append(key, JSON.stringify(value));
       } else {
         formData.append(key, value);
       }
     });
 
+    // Row-based file uploads: rowFiles = [{ rowIndex, docType, file }]
+    if (Array.isArray(data.rowFiles)) {
+      data.rowFiles.forEach(({ rowIndex, docType, file }) => {
+        if (file instanceof File) {
+          formData.append(`file_${rowIndex}_${docType}`, file);
+        }
+      });
+    }
+
     const response = await apiClient.post('/collaboration-activity', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   } catch (error) {
-    // If it's a 422, error.response.data usually contains a 'detail' array
     const serverError = error.response?.data?.detail;
-
     if (Array.isArray(serverError)) {
-      // Take the first error message and its location (e.g., "body.project_id: field required")
       const msg = serverError.map(err => `${err.loc.join('.')}: ${err.msg}`).join(', ');
       throw new Error(msg);
     }
-
-    throw error.response?.data?.message || error.message || "An unknown error occurred";
+    throw error.response?.data?.message || error.message || 'An unknown error occurred';
   }
 };
 
@@ -156,18 +216,26 @@ export const createCollaborationActivity = async (data) => {
 export const updateCollaborationActivity = async (id, data) => {
   try {
     const formData = new FormData();
+
+    const SKIP_KEYS = new Set(['document', 'numeric_value', 'university_id', 'rowFiles']);
     Object.entries(data).forEach(([key, value]) => {
+      if (SKIP_KEYS.has(key)) return;
       if (value === undefined || value === null) return;
-      if (key === 'document') {
-        if (value instanceof File) {
-          formData.append('document', value);
-        }
-      } else if (key === 'activity_data' && typeof value === 'object') {
+      if (key === 'activity_data' && typeof value === 'object') {
         formData.append(key, JSON.stringify(value));
       } else {
         formData.append(key, value);
       }
     });
+
+    // Row-based file uploads
+    if (Array.isArray(data.rowFiles)) {
+      data.rowFiles.forEach(({ rowIndex, docType, file }) => {
+        if (file instanceof File) {
+          formData.append(`file_${rowIndex}_${docType}`, file);
+        }
+      });
+    }
 
     const response = await apiClient.put(`/collaboration-activity/${id}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -267,6 +335,18 @@ export const submitCollaborationActivity = async (id) => {
   }
 };
 
+/**
+ * Delete a collaboration activity (SUPER_ADMIN only).
+ */
+export const deleteCollaborationActivity = async (id) => {
+  try {
+    const response = await apiClient.delete(`/collaboration-activity/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
 export const getDraftActivities = async (filters = {}) => {
   try {
     // Strip empty string values, then force status filter
@@ -300,14 +380,7 @@ export const downloadActivityDocument = async (id) => {
   }
 };
 
-/**
- * @deprecated Use downloadActivityDocument(id) instead.
- * Returns a URL with the token embedded as a query parameter (auth header not sent).
- */
-export const getActivityDocumentUrl = (id) => {
-  const token = localStorage.getItem('token');
-  return `${API_BASE_URL}/collaboration-activity/${id}/document?token=${token}`;
-};
+// getActivityDocumentUrl removed — use downloadActivityDocument(id) instead.
 
 // ─── MOU APIs ────────────────────────────────────────────────────────────────
 
@@ -368,11 +441,7 @@ export const downloadMOUDocument = async (id) => {
   }
 };
 
-/** @deprecated Use downloadMOUDocument(id) instead. */
-export const getMOUDocumentUrl = (id) => {
-  const token = localStorage.getItem('token');
-  return `${API_BASE_URL}/mou/${id}/document?token=${token}`;
-};
+// getMOUDocumentUrl removed — use downloadMOUDocument(id) instead.
 
 // ─── Master Data APIs ─────────────────────────────────────────────────────────
 
