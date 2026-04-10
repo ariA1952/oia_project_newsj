@@ -26,6 +26,7 @@ import {
     deleteCollaborationActivity,
 } from '../services/metricsService';
 import { getParamConfig, docKey } from '../config/parameterConfigs';
+import ActivityDetailsPopup from '../components/ActivityDetailsPopup';
 import './Review.css';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
@@ -155,7 +156,7 @@ const ActivityCard = memo(({
     canAct, isSuperAdmin,
     onApprove, onRejectOpen, onClarifyOpen, onChatOpen,
     onSubmit, onResubmit, onEditRedirect, onDeleteOpen,
-    onViewDoc,
+    onViewDoc, onDetailsOpen,
 }) => {
     const [expanded, setExpanded] = useState(false);
     const rows = activity.activity_data?.rows ?? [];
@@ -273,28 +274,16 @@ const ActivityCard = memo(({
                 </div>
             </div>
 
-            {/* Detail toggle + lazy panel */}
-            {rows.length > 0 && (
-                <>
-                    <button
-                        type="button"
-                        className="rv-detail-toggle"
-                        onClick={() => setExpanded((p) => !p)}
-                    >
-                        {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                        {expanded ? 'Hide Details' : 'View Details'}
-                        <span style={{ fontWeight: 400, color: '#9ca3af' }}>({rows.length})</span>
-                    </button>
-                    {expanded && (
-                        <RowDetailPanel
-                            activity={activity}
-                            config={config}
-                            universities={universities}
-                            onViewDoc={onViewDoc}
-                        />
-                    )}
-                </>
-            )}
+            {/* View Details → opens modal popup */}
+            <button
+                type="button"
+                className="rv-detail-toggle"
+                onClick={() => onDetailsOpen(activity)}
+            >
+                <ChevronRight size={13} />
+                View Details
+                <span style={{ fontWeight: 400, color: '#9ca3af' }}>({rows.length})</span>
+            </button>
         </div>
     );
 });
@@ -307,7 +296,7 @@ const ParameterSummaryCard = memo(({
     canAct, isSuperAdmin,
     onApprove, onRejectOpen, onClarifyOpen, onChatOpen,
     onSubmit, onResubmit, onEditRedirect, onDeleteOpen,
-    onViewDoc, onBulkApprove, onBulkRejectOpen,
+    onViewDoc, onBulkApprove, onBulkRejectOpen, onDetailsOpen,
 }) => {
     const [expanded, setExpanded] = useState(false);
     const counts = countByStatus(activities);
@@ -390,6 +379,7 @@ const ParameterSummaryCard = memo(({
                                 onEditRedirect={onEditRedirect}
                                 onDeleteOpen={onDeleteOpen}
                                 onViewDoc={onViewDoc}
+                                onDetailsOpen={onDetailsOpen}
                             />
                         ))}
                     </div>
@@ -439,6 +429,7 @@ const Review = () => {
     const [deleteModal, setDeleteModal] = useState({ show: false, activityId: null });
     const [bulkRejectModal, setBulkRejectModal] = useState({ show: false, paramId: null });
     const [bulkRejectRemarks, setBulkRejectRemarks] = useState('');
+    const [detailsModal, setDetailsModal] = useState({ show: false, activity: null, config: null });
 
     // ─── Profile auto-fill ──────────────────────────────────────────────────
     useEffect(() => {
@@ -701,6 +692,10 @@ const Review = () => {
                                     onEditRedirect={handleEditRedirect}
                                     onDeleteOpen={(id) => setDeleteModal({ show: true, activityId: id })}
                                     onViewDoc={viewDoc}
+                                    onDetailsOpen={(activity) => {
+                                        const param = getParam(activity.parameter_id);
+                                        setDetailsModal({ show: true, activity, config: getParamConfig(param) });
+                                    }}
                                     onBulkApprove={handleBulkApprove}
                                     onBulkRejectOpen={handleBulkRejectOpen}
                                 />
@@ -801,6 +796,17 @@ const Review = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* ── Activity Details Popup ───────────────────────────────────── */}
+            {detailsModal.show && (
+                <ActivityDetailsPopup
+                    activity={detailsModal.activity}
+                    config={detailsModal.config}
+                    userRole={userRole}
+                    masterData={masterData}
+                    onClose={() => setDetailsModal({ show: false, activity: null, config: null })}
+                />
             )}
 
             {notification && (
