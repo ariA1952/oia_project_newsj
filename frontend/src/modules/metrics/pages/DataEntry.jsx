@@ -21,8 +21,8 @@ const DataEntry = () => {
     const { user } = useAuth();
     const [searchParams] = useSearchParams();
     const userRole = user?.erp_users_type;
-    const isHOD   = ['HOD', 'COORDINATOR'].includes(userRole);
-    const isAdmin  = ['OIA_ADMIN', 'SUPER_ADMIN'].includes(userRole);
+    const isHOD = ['HOD', 'COORDINATOR'].includes(userRole);
+    const isAdmin = ['OIA_ADMIN', 'SUPER_ADMIN'].includes(userRole);
     const { masterData, loading: masterDataLoading, error: masterDataError } = useMetricsMasterData();
     const { profile, loading: profileLoading } = useUserProfile();
     const [context, setContext] = useState({
@@ -403,7 +403,6 @@ const DataEntry = () => {
                                                     }}
                                                     disabled={(!mappingId && !isContextSelected) || (activity?.status && activity?.status !== 'DRAFT' && activity?.status !== 'REJECTED' && activity?.status !== 'CLARIFICATION_REQUESTED')}
                                                     isContextSelected={isContextSelected}
-                                                    hasSubmittedSibling={activities.some(a => a?.status === 'SUBMITTED')}
                                                 />
                                             </div>
                                         ));

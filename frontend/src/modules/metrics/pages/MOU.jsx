@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
     Plus, Edit2, FileText, ExternalLink, Search,
-    Calendar, Building2, AlertCircle, Shield
+    Calendar, Building2, AlertCircle, Shield, Trash2, CheckCircle, XCircle
 } from 'lucide-react';
 import ActionButton from '../../../common/ActionButton';
 import Loader from '../../../common/Loader';
@@ -12,6 +12,8 @@ import {
     getMOUs,
     createMOU,
     downloadMOUDocument,
+    deleteMOU,
+    updateMOU,
 } from '../services/metricsService';
 import './MOU.css';
 
@@ -33,7 +35,9 @@ const StatusBadge = ({ status }) => (
 
 const MOU = () => {
     const { user } = useAuth();
-    const isAdmin = ['OIA_ADMIN', 'SUPER_ADMIN'].includes(user?.erp_users_type);
+    const userRole = user?.erp_users_type;
+    const isAdmin = ['OIA_ADMIN', 'SUPER_ADMIN'].includes(userRole);
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
     // Faculty and HOD are both view-only
     const isViewOnly = !isAdmin;
 
@@ -70,6 +74,17 @@ const MOU = () => {
             setNotification({ message: 'Failed to fetch MOUs', type: 'error' });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this MOU? This action cannot be undone.')) return;
+        try {
+            await deleteMOU(id);
+            setNotification({ message: 'MOU deleted successfully', type: 'success' });
+            fetchMOUs();
+        } catch (err) {
+            setNotification({ message: err?.detail || 'Failed to delete MOU', type: 'error' });
         }
     };
 
@@ -196,6 +211,7 @@ const MOU = () => {
                         <span>Academic Year</span>
                         <span>Duration</span>
                         <span>Status</span>
+                        <span>MOU Exists</span>
                         <span>Document</span>
                         {isAdmin && <span>Actions</span>}
                     </div>
@@ -243,6 +259,15 @@ const MOU = () => {
                                         <StatusBadge status={mou.status} />
                                     </div>
 
+                                    {/* MOU Exists (Based on document) */}
+                                    <div className="mou__col" style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: '1rem' }}>
+                                        {mou.document_path ? (
+                                            <CheckCircle size={18} color="green" title="MOU Document Exists" />
+                                        ) : (
+                                            <XCircle size={18} color="red" title="No MOU Document" />
+                                        )}
+                                    </div>
+
                                     {/* Document */}
                                     <div className="mou__col">
                                         {mou.document_path ? (
@@ -261,14 +286,23 @@ const MOU = () => {
                                         )}
                                     </div>
 
-                                    {/* Actions (Admin only) - Disabled as backend update endpoint is not present */}
-                                    {/* {isAdmin && (
-                                        <div className="mou__col mou__col--actions">
-                                            <ActionButton variant="secondary" onClick={() => handleOpenModal(mou)}>
+                                    {/* Actions */}
+                                    {isAdmin && (
+                                        <div className="mou__col mou__col--actions" style={{ flexDirection: 'row', gap: '8px' }}>
+                                            <ActionButton variant="secondary" onClick={() => handleOpenModal(mou)} title="Edit MOU">
                                                 <Edit2 size={15} />
                                             </ActionButton>
+                                            {isSuperAdmin && (
+                                                <ActionButton 
+                                                    variant="danger" 
+                                                    onClick={() => handleDelete(mou.mou_id)}
+                                                    title="Delete MOU"
+                                                >
+                                                    <Trash2 size={15} />
+                                                </ActionButton>
+                                            )}
                                         </div>
-                                    )} */}
+                                    )}
                                 </div>
                             ))
                         )}

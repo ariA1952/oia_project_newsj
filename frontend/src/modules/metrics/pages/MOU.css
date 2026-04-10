@@ -76,7 +76,7 @@
 
 .mou__table-header {
     display: grid;
-    grid-template-columns: 2fr 1.2fr 1.2fr 2fr 0.9fr 1fr 0.6fr;
+    grid-template-columns: 2fr 1.1fr 1.1fr 1.5fr 0.9fr 0.8fr 0.9fr 0.6fr;
     background: linear-gradient(135deg, #1e293b 0%, #2d3f55 100%);
     padding: 14px 20px;
     color: #e2e8f0;
@@ -88,8 +88,9 @@
 }
 
 /* When not admin (no actions column) */
-.mou__table-header:has(:nth-child(6):last-child) {
-    grid-template-columns: 2fr 1.2fr 1.2fr 2fr 0.9fr 1fr;
+.mou__table-header:has(:nth-child(7):last-child),
+.mou__row:has(:nth-child(7):last-child) {
+    grid-template-columns: 2fr 1.1fr 1.1fr 1.5fr 0.9fr 0.8fr 0.9fr;
 }
 
 .mou__list {
@@ -108,7 +109,7 @@
 
 .mou__row {
     display: grid;
-    grid-template-columns: 2fr 1.2fr 1.2fr 2fr 0.9fr 1fr 0.6fr;
+    grid-template-columns: 2fr 1.1fr 1.1fr 1.5fr 0.9fr 0.8fr 0.9fr 0.6fr;
     padding: 16px 20px;
     gap: 12px;
     align-items: center;

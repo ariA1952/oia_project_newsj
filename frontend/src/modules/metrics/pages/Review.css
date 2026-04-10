@@ -1,25 +1,33 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Review Page  –  3-Level Hierarchical Card UI
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .review {
     padding: 24px;
     max-width: 1400px;
     margin: 0 auto;
 }
 
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+
 .review__header {
-    margin-bottom: 32px;
+    margin-bottom: 24px;
 }
 
 .review__title {
     font-size: 28px;
     font-weight: 700;
     color: #111827;
-    margin: 0 0 8px 0;
+    margin: 0 0 6px 0;
 }
 
 .review__subtitle {
-    font-size: 16px;
+    font-size: 15px;
     color: #6b7280;
     margin: 0;
 }
+
+/* ─── Loader / Empty ─────────────────────────────────────────────────────── */
 
 .review__loader {
     display: flex;
@@ -45,39 +53,62 @@
     opacity: 0.5;
 }
 
-/* Tabs */
-.review__tabs {
+/* ─── Status Tabs ────────────────────────────────────────────────────────── */
+
+.rv-tabs {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     margin-bottom: 20px;
+    padding-bottom: 10px;
     border-bottom: 1px solid #e5e7eb;
-    padding-bottom: 8px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
-.review__tab-button {
-    padding: 8px 16px;
+.rv-tab {
+    padding: 7px 14px;
     border: none;
     background: transparent;
     color: #6b7280;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
     border-radius: 6px;
     transition: all 0.2s ease;
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
-.review__tab-button:hover {
+.rv-tab:hover {
     background-color: #f3f4f6;
     color: #374151;
 }
 
-.review__tab-button--active {
+.rv-tab--active {
     background-color: #eff6ff;
     color: #2563eb;
     font-weight: 600;
 }
+
+.rv-tab__count {
+    font-size: 11px;
+    font-weight: 700;
+    background: #e5e7eb;
+    color: #374151;
+    padding: 1px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+}
+
+.rv-tab--active .rv-tab__count {
+    background: #bfdbfe;
+    color: #1d4ed8;
+}
+
+/* ─── Content container ──────────────────────────────────────────────────── */
 
 .review__content {
     display: flex;
@@ -85,224 +116,479 @@
     gap: 16px;
 }
 
-.review__parameter-group {
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   LEVEL 1 — Parameter Summary Card
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-.review__parameter-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    background-color: #f9fafb;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.review__parameter-header:hover {
-    background-color: #f3f4f6;
-}
-
-.review__parameter-name {
-    font-size: 16px;
-    font-weight: 600;
-    color: #111827;
-}
-
-.review__parameter-count {
-    font-size: 14px;
-    color: #6b7280;
-}
-
-.review__expand-icon {
-    font-size: 12px;
-    color: #6b7280;
-}
-
-.review__activities {
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.review__activity-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
+.rv-param-card {
+    background: #ffffff;
+    border-radius: 10px;
     border: 1px solid #e5e7eb;
-    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
     transition: box-shadow 0.2s ease;
 }
 
-.review__activity-card:hover {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+.rv-param-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.review__activity-info {
+.rv-param-card--has-pending {
+    border-left: 4px solid #d97706;
+}
+
+.rv-param-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: background 0.15s;
+    gap: 12px;
+}
+
+.rv-param-header:hover {
+    background: #f9fafb;
+}
+
+.rv-param-header__left {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     flex: 1;
+    min-width: 0;
 }
 
-.review__activity-row {
-    font-size: 14px;
-    color: #374151;
-}
-
-.review__activity-row strong {
-    color: #111827;
-    margin-right: 8px;
-}
-
-.review__status {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 12px;
+.rv-param-name {
+    font-size: 15px;
     font-weight: 600;
-    text-transform: uppercase;
+    color: #111827;
+    line-height: 1.3;
 }
 
-.review__status--draft {
-    background-color: #fef3c7;
+.rv-param-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.rv-param-total {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* Status breakdown mini-badges */
+.rv-stat-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.rv-stat-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.rv-stat-badge--submitted {
+    background: #fef3c7;
     color: #92400e;
 }
 
-.review__status--approved {
-    background-color: #d1fae5;
+.rv-stat-badge--approved {
+    background: #d1fae5;
     color: #065f46;
 }
 
-.review__status--rejected {
-    background-color: #fee2e2;
+.rv-stat-badge--rejected {
+    background: #fee2e2;
     color: #991b1b;
 }
 
-.review__activity-remarks {
-    margin-top: 8px;
-    padding: 10px 12px;
-    background-color: #fff1f2;
-    border-left: 3px solid #f43f5e;
-    border-radius: 4px;
-    font-size: 13px;
-    color: #9f1239;
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    line-height: 1.4;
+.rv-stat-badge--clarification-requested {
+    background: #fff7ed;
+    color: #9a3412;
 }
 
-.review__activity-remarks--clarify {
-    background-color: #fffbeb;
-    border-left-color: #f59e0b;
-    color: #92400e;
-}
-
-.review__activity-remarks span {
-    flex: 1;
-}
-
-.review__doc-link {
-    color: #2563eb;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 13px;
-    padding: 2px 8px;
-    background: #eff6ff;
-    border-radius: 4px;
-    margin-left: 4px;
-}
-
-.review__doc-link:hover {
-    background: #dbeafe;
-}
-
-.review__modal-desc {
-    font-size: 13px;
-    color: #6b7280;
-    margin-bottom: 14px;
-}
-
-
-.review__activity-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    align-items: center;
-}
-
-/* Data Table Styles for HOD/Admin */
-.review__table-container {
-    width: 100%;
-    overflow-x: auto;
-    background: #ffffff;
-    border-radius: 8px;
-    border: 1px solid #e5e7eb;
-}
-
-.review__table {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: left;
-    font-size: 14px;
-}
-
-.review__table th {
-    background-color: #f9fafb;
-    padding: 12px 16px;
-    font-weight: 600;
-    color: #374151;
-    border-bottom: 1px solid #e5e7eb;
-    white-space: nowrap;
-}
-
-.review__table th:last-child {
-    text-align: center;
-}
-
-.review__table td {
-    padding: 16px;
-    vertical-align: top;
-    border-bottom: 1px solid #e5e7eb;
+.rv-stat-badge--draft {
+    background: #f3f4f6;
     color: #4b5563;
 }
 
-.review__table tr:last-child td {
-    border-bottom: none;
+.rv-param-header__right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
-.review__table tr:hover {
-    background-color: #fcfcfc;
+.rv-param-expand-icon {
+    color: #9ca3af;
+    transition: transform 0.2s ease;
 }
 
-.review__table-title {
+/* ─── Bulk actions (Approve All / Reject All) ────────────────────────────── */
+
+.rv-bulk-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: #f0fdf4;
+    border-top: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+    gap: 12px;
+}
+
+.rv-bulk-bar__info {
+    font-size: 13px;
+    color: #374151;
+    font-weight: 500;
+}
+
+.rv-bulk-bar__info strong {
+    color: #d97706;
+}
+
+.rv-bulk-bar__actions {
+    display: flex;
+    gap: 8px;
+}
+
+.rv-bulk-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rv-bulk-btn--approve {
+    background: #16a34a;
+    color: white;
+}
+
+.rv-bulk-btn--approve:hover {
+    background: #15803d;
+}
+
+.rv-bulk-btn--reject {
+    background: #dc2626;
+    color: white;
+}
+
+.rv-bulk-btn--reject:hover {
+    background: #b91c1c;
+}
+
+/* ─── Activities container inside a param card ───────────────────────────── */
+
+.rv-activities {
+    padding: 12px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LEVEL 2 — Activity Card
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.rv-activity-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 14px 16px;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.rv-activity-card:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    border-color: #d1d5db;
+}
+
+.rv-activity-card--pending {
+    border-left: 3px solid #d97706;
+}
+
+.rv-activity-card--rejected {
+    border-left: 3px solid #dc2626;
+}
+
+.rv-activity-card--clarification {
+    border-left: 3px solid #f59e0b;
+}
+
+.rv-activity-card--approved {
+    border-left: 3px solid #16a34a;
+}
+
+.rv-activity-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.rv-activity-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.rv-activity-title {
+    font-size: 14px;
     font-weight: 600;
     color: #111827;
-    margin-bottom: 4px;
+    line-height: 1.3;
 }
 
-.review__table-remarks {
-    font-size: 13px;
+.rv-activity-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 12.5px;
     color: #6b7280;
-    margin-bottom: 6px;
+}
+
+.rv-activity-meta__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Status badge */
+.rv-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.rv-badge--draft {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+
+.rv-badge--submitted {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.rv-badge--approved {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.rv-badge--rejected {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.rv-badge--clarification-requested {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+/* Remarks inline */
+.rv-remarks {
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-radius: 5px;
+    font-size: 12.5px;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
     line-height: 1.4;
 }
 
-.review__table-row--has-chat td {
-    border-bottom: none !important;
+.rv-remarks--rejection {
+    background: #fff1f2;
+    border-left: 3px solid #f43f5e;
+    color: #9f1239;
 }
 
-.review__chat-row td {
-    background-color: #f9fafb;
+.rv-remarks--clarify {
+    background: #fffbeb;
+    border-left: 3px solid #f59e0b;
+    color: #92400e;
 }
 
-/* Modal Styles */
+.rv-remarks span {
+    flex: 1;
+}
+
+/* ─── Action strip ───────────────────────────────────────────────────────── */
+
+.rv-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.rv-action-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6b7280;
+    padding: 4px 8px;
+}
+
+/* ─── Chat trigger (small icon button) ───────────────────────────────────── */
+
+.rv-chat-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid #fbbf24;
+    background: #fffbeb;
+    color: #92400e;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.rv-chat-btn:hover {
+    background: #fef3c7;
+    border-color: #f59e0b;
+}
+
+/* ─── Detail toggle ──────────────────────────────────────────────────────── */
+
+.rv-detail-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #f8fafc;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 8px;
+}
+
+.rv-detail-toggle:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LEVEL 3 — Row Detail Panel (lazy rendered)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.rv-rows-panel {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.rv-row-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.rv-row-card__label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #2563eb;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Row fields */
+.rv-row-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 2px 0;
+}
+
+.rv-row-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 13px;
+    color: #374151;
+    flex-wrap: wrap;
+}
+
+.rv-row-field__icon {
+    color: #6b7280;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.rv-row-field__label {
+    font-weight: 600;
+    color: #111827;
+    white-space: nowrap;
+}
+
+/* Document items in row detail */
+.rv-row-docs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.rv-doc-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    border-radius: 5px;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.rv-doc-btn:hover {
+    background: #dbeafe;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODALS (preserved from original, prefixed review__)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .review__modal-overlay {
     position: fixed;
     top: 0;
@@ -318,15 +604,15 @@
 
 .review__modal {
     background-color: white;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 24px;
     width: 90%;
     max-width: 500px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
-.review__modal-title {
-    font-size: 20px;
+.review__modal h3 {
+    font-size: 18px;
     font-weight: 600;
     color: #111827;
     margin: 0 0 16px 0;
@@ -336,227 +622,27 @@
     width: 100%;
     padding: 12px;
     border: 1px solid #d1d5db;
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 14px;
     font-family: inherit;
     resize: vertical;
     outline: none;
     margin-bottom: 16px;
+    min-height: 80px;
 }
 
 .review__modal-textarea:focus {
     border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .review__modal-actions {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     justify-content: flex-end;
 }
 
-@media (max-width: 768px) {
-    .review {
-        padding: 16px;
-    }
-
-    .review__title {
-        font-size: 24px;
-    }
-
-    .review__activity-card {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .review__activity-actions {
-        width: 100%;
-        justify-content: flex-start;
-    }
-}
-
-/* ─── Row field summary (RowFieldSummary component) ────────────── */
-
-.review__row-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    padding: 4px 0;
-}
-
-.review__row-field {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    font-size: 13px;
-    color: #374151;
-    flex-wrap: wrap;
-}
-
-.review__row-field-icon {
-    color: #6b7280;
-    margin-top: 1px;
-    flex-shrink: 0;
-}
-
-.review__row-field-label {
-    font-weight: 600;
-    color: #111827;
-    white-space: nowrap;
-}
-
-.review__row-field--docs {
-    color: #1d4ed8;
-}
-
-/* ─── Rows expand/collapse section ─────────────────────────────── */
-
-.review__rows-section {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin: 4px 0;
-}
-
-.review__rows-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: #475569;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.review__rows-toggle:hover {
-    background: #e2e8f0;
-    color: #1e293b;
-}
-
-/* ─── Individual row cards ──────────────────────────────────────── */
-
-.review__row-card {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.review__row-card__label {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: #2563eb;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-/* ─── Table extras ──────────────────────────────────────────────── */
-
-.review__table-faculty {
-    font-size: 12px;
-    color: #6b7280;
-}
-
-.review__detail-row td {
-    padding: 0 !important;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.review__detail-body {
-    padding: 14px 16px;
-    background: #f9fafb;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-/* ─── Activity status inline ────────────────────────────────────── */
-
-.review__activity-status {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* ─── Clarification chat trigger ────────────────────────────────── */
-
-.review__chat-trigger-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 10px;
-    border: 1px solid #fbbf24;
-    border-radius: 6px;
-    background: #fffbeb;
-    color: #92400e;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    margin-top: 8px;
-}
-
-.review__chat-trigger-btn:hover {
-    background: #fef3c7;
-    border-color: #f59e0b;
-}
-
-.review__chat-trigger-btn--small {
-    padding: 4px 6px;
-    margin-top: 0;
-}
-
-.review__chat-trigger-btn--small span {
-    display: none;
-}
-
-/* ─── View docs button (faculty view) ───────────────────────────── */
-
-.review__doc-link-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: #eff6ff;
-    color: #2563eb;
-    border: 1px solid #bfdbfe;
-    border-radius: 5px;
-    padding: 3px 8px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.review__doc-link-btn:hover {
-    background: #dbeafe;
-}
-
-.review__table-doc-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    background: transparent;
-    color: #2563eb;
-    border: none;
-    font-size: 11px;
-    cursor: pointer;
-    padding: 2px 4px;
-}
-
-.review__table-doc-btn:hover {
-    text-decoration: underline;
-}
-
-/* ─── Chat modal variant ────────────────────────────────────────── */
-
+/* Chat modal variant */
 .review__modal--chat {
     max-width: 600px;
     max-height: 80vh;
@@ -568,4 +654,43 @@
     flex: 1;
     max-height: 50vh;
     margin: 12px 0;
-}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+    .review {
+        padding: 16px;
+    }
+
+    .review__title {
+        font-size: 22px;
+    }
+
+    .rv-param-header {
+        padding: 12px 14px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .rv-activity-top {
+        flex-direction: column;
+    }
+
+    .rv-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .rv-bulk-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .rv-stat-badges {
+        gap: 4px;
+    }
+}

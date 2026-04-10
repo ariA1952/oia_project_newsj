@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit2, Globe, MapPin, ExternalLink, Search, CheckCircle, XCircle, FileDown, Clock, Filter } from 'lucide-react';
+import { Plus, Edit2, Globe, MapPin, ExternalLink, Search, CheckCircle, XCircle, FileDown, Clock, Filter, Trash2 } from 'lucide-react';
 import ActionButton from '../../../common/ActionButton';
 import Loader from '../../../common/Loader';
 import Notification from '../../../common/Notification';
@@ -11,6 +11,7 @@ import {
     approvePartnerUniversity,
     rejectPartnerUniversity,
     downloadUniversityAgreementDocument,
+    deletePartnerUniversity,
 } from '../services/metricsService';
 import './Partners.css';
 
@@ -42,7 +43,9 @@ const TABS = [
 
 const Partners = () => {
     const { user } = useAuth();
-    const isAdmin = ['OIA_ADMIN', 'SUPER_ADMIN'].includes(user?.erp_users_type);
+    const userRole = user?.erp_users_type;
+    const isAdmin = ['OIA_ADMIN', 'SUPER_ADMIN'].includes(userRole);
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
 
     const [universities, setUniversities]           = useState([]);
     const [pendingCount, setPendingCount]           = useState(0);
@@ -127,6 +130,20 @@ const Partners = () => {
             window.open(url, '_blank');
         } catch {
             setNotification({ message: 'Document not found or unavailable.', type: 'error' });
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleDelete = async (uni) => {
+        if (!window.confirm(`Are you sure you want to delete "${uni.university_name}"? This cannot be undone.`)) return;
+        setActionLoading(uni.university_id);
+        try {
+            await deletePartnerUniversity(uni.university_id);
+            setNotification({ message: `${uni.university_name} has been deleted.`, type: 'success' });
+            fetchUniversities();
+        } catch (err) {
+            setNotification({ message: err?.detail || 'Failed to delete university', type: 'error' });
         } finally {
             setActionLoading(null);
         }
@@ -383,9 +400,20 @@ const Partners = () => {
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <ActionButton variant="secondary" onClick={() => handleOpenModal(uni)}>
-                                                    <Edit2 size={14} />
-                                                </ActionButton>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <ActionButton variant="secondary" onClick={() => handleOpenModal(uni)}>
+                                                        <Edit2 size={14} />
+                                                    </ActionButton>
+                                                    {isSuperAdmin && (
+                                                        <ActionButton 
+                                                            variant="danger" 
+                                                            onClick={() => handleDelete(uni)}
+                                                            title="Delete University"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </ActionButton>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     )}

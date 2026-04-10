@@ -127,6 +127,16 @@ export const rejectPartnerUniversity = async (id) => {
   }
 };
 
+/** Super Admin deletes a partner university. */
+export const deletePartnerUniversity = async (id) => {
+  try {
+    const response = await apiClient.delete(`/partner-university/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
 /** Download the agreement/MOU document attached to a university suggestion. */
 export const downloadUniversityAgreementDocument = async (id) => {
   try {
@@ -436,6 +446,39 @@ export const downloadMOUDocument = async (id) => {
       { responseType: 'blob' }
     );
     return URL.createObjectURL(response.data);
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Delete an MOU (Super Admin only).
+ */
+export const deleteMOU = async (id) => {
+  try {
+    const response = await apiClient.delete(`/mou/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/** Update an existing MOU record (Admins only). */
+export const updateMOU = async (id, data) => {
+  try {
+    const formData = new FormData();
+    formData.append('university_id', data.university_id);
+    formData.append('erp_academic_year_id', data.erp_academic_year_id);
+    if (data.mou_type) formData.append('mou_type', data.mou_type);
+    if (data.start_date) formData.append('start_date', data.start_date);
+    if (data.end_date) formData.append('end_date', data.end_date);
+    if (data.status) formData.append('status', data.status);
+    if (data.document instanceof File) formData.append('document', data.document);
+
+    const response = await apiClient.put(`/mou/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
   }

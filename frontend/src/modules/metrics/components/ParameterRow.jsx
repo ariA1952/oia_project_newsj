@@ -24,9 +24,9 @@ const FALLBACK_CONFIG = {
     adminOnly: false,
     fields: [
         { id: 'partner_universities', label: 'Partner Universities / Org.', type: 'multi-uni' },
-        { id: 'start_date',           label: 'Start Date',                  type: 'date' },
-        { id: 'end_date',             label: 'End Date',                    type: 'date' },
-        { id: 'remarks',              label: 'Remarks / Notes',             type: 'textarea' },
+        { id: 'start_date', label: 'Start Date', type: 'date' },
+        { id: 'end_date', label: 'End Date', type: 'date' },
+        { id: 'remarks', label: 'Remarks / Notes', type: 'textarea' },
     ],
     documents: ['Report', 'Other'],
 };
@@ -66,93 +66,93 @@ const MultiUniversitySelect = ({ value = [], onChange, universities = [], disabl
 
     return (
         <>
-        <div className="multi-uni-wrapper" ref={ref}>
-            <button
-                type="button"
-                className={`multi-uni-trigger ${disabled ? 'multi-uni-trigger--disabled' : ''}`}
-                onClick={() => !disabled && setOpen((o) => !o)}
-                disabled={disabled}
-            >
-                <span className="multi-uni-trigger__label">{label}</span>
-                <ChevronDown
-                    size={14}
-                    className={`multi-uni-trigger__icon ${open ? 'multi-uni-trigger__icon--open' : ''}`}
-                />
-            </button>
+            <div className="multi-uni-wrapper" ref={ref}>
+                <button
+                    type="button"
+                    className={`multi-uni-trigger ${disabled ? 'multi-uni-trigger--disabled' : ''}`}
+                    onClick={() => !disabled && setOpen((o) => !o)}
+                    disabled={disabled}
+                >
+                    <span className="multi-uni-trigger__label">{label}</span>
+                    <ChevronDown
+                        size={14}
+                        className={`multi-uni-trigger__icon ${open ? 'multi-uni-trigger__icon--open' : ''}`}
+                    />
+                </button>
 
-            {open && (
-                <div className="multi-uni-dropdown">
-                    <div className="multi-uni-dropdown__search-row">
-                        <input
-                            className="multi-uni-search"
-                            type="text"
-                            placeholder="Search universities..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            autoFocus
-                        />
-                        {!isAdmin && !disabled && (
-                            <button
-                                type="button"
-                                className="multi-uni-suggest-btn"
-                                title="Suggest a new university"
-                                onClick={() => { setOpen(false); setShowSuggestModal(true); }}
-                            >
-                                <Plus size={13} /> Add
-                            </button>
-                        )}
-                    </div>
-                    {filtered.length === 0 && (
-                        <div className="multi-uni-empty">No universities found</div>
-                    )}
-                    {filtered.map((u) => {
-                        const id = String(u.university_id);
-                        return (
-                            <label key={id} className="multi-uni-option">
-                                <input
-                                    type="checkbox"
-                                    checked={ids.includes(id)}
-                                    onChange={() => toggle(id)}
-                                    className="multi-uni-option__check"
-                                />
-                                <span className="multi-uni-option__name">{u.university_name}</span>
-                                {u.country && (
-                                    <span className="multi-uni-option__country">{u.country}</span>
-                                )}
-                            </label>
-                        );
-                    })}
-                </div>
-            )}
-
-            {selected.length > 0 && (
-                <div className="multi-uni-tags">
-                    {selected.map((u) => (
-                        <span key={u.university_id} className="multi-uni-tag">
-                            {u.university_name}
-                            {!disabled && (
+                {open && (
+                    <div className="multi-uni-dropdown">
+                        <div className="multi-uni-dropdown__search-row">
+                            <input
+                                className="multi-uni-search"
+                                type="text"
+                                placeholder="Search universities..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                autoFocus
+                            />
+                            {!isAdmin && !disabled && (
                                 <button
                                     type="button"
-                                    className="multi-uni-tag__remove"
-                                    onClick={() => toggle(u.university_id)}
+                                    className="multi-uni-suggest-btn"
+                                    title="Suggest a new university"
+                                    onClick={() => { setOpen(false); setShowSuggestModal(true); }}
                                 >
-                                    <X size={10} />
+                                    <Plus size={13} /> Add
                                 </button>
                             )}
-                        </span>
-                    ))}
-                </div>
-            )}
-        </div>
+                        </div>
+                        {filtered.length === 0 && (
+                            <div className="multi-uni-empty">No universities found</div>
+                        )}
+                        {filtered.map((u) => {
+                            const id = String(u.university_id);
+                            return (
+                                <label key={id} className="multi-uni-option">
+                                    <input
+                                        type="checkbox"
+                                        checked={ids.includes(id)}
+                                        onChange={() => toggle(id)}
+                                        className="multi-uni-option__check"
+                                    />
+                                    <span className="multi-uni-option__name">{u.university_name}</span>
+                                    {u.country && (
+                                        <span className="multi-uni-option__country">{u.country}</span>
+                                    )}
+                                </label>
+                            );
+                        })}
+                    </div>
+                )}
 
-        {showSuggestModal && (
-            <SuggestUniversityModal
-                onClose={() => setShowSuggestModal(false)}
-                onSuccess={() => {
-                    // Modal shows its own success state; we just keep it open until user dismisses
-                }}
-            />
-        )}
+                {selected.length > 0 && (
+                    <div className="multi-uni-tags">
+                        {selected.map((u) => (
+                            <span key={u.university_id} className="multi-uni-tag">
+                                {u.university_name}
+                                {!disabled && (
+                                    <button
+                                        type="button"
+                                        className="multi-uni-tag__remove"
+                                        onClick={() => toggle(u.university_id)}
+                                    >
+                                        <X size={10} />
+                                    </button>
+                                )}
+                            </span>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {showSuggestModal && (
+                <SuggestUniversityModal
+                    onClose={() => setShowSuggestModal(false)}
+                    onSuccess={() => {
+                        // Modal shows its own success state; we just keep it open until user dismisses
+                    }}
+                />
+            )}
         </>
     );
 };
@@ -256,9 +256,9 @@ const RowCard = ({
     const fileInputRefs = useRef({});
 
     // Split fields into groups for layout
-    const uniFields     = config.fields.filter((f) => f.type === 'multi-uni');
-    const dateFields    = config.fields.filter((f) => f.type === 'date');
-    const otherFields   = config.fields.filter(
+    const uniFields = config.fields.filter((f) => f.type === 'multi-uni');
+    const dateFields = config.fields.filter((f) => f.type === 'date');
+    const otherFields = config.fields.filter(
         (f) => f.type !== 'multi-uni' && f.type !== 'date'
     );
 
@@ -306,8 +306,7 @@ const RowCard = ({
                         {uniFields.map((f) => (
                             <div key={f.id} className="activity-row-card__field activity-row-card__field--wide">
                                 <label className="parameter-row__label">
-                                    {f.label}
-                                    {f.required && <span className="param-required">*</span>}
+                                    {f.label} <span className="param-required">*</span>
                                 </label>
                                 <MultiUniversitySelect
                                     value={getRowFieldValue(row, f.id)}
@@ -333,8 +332,7 @@ const RowCard = ({
                                 return (
                                     <div key={f.id} className="activity-row-card__field">
                                         <label className="parameter-row__label">
-                                            {f.label}
-                                            {f.required && <span className="param-required">*</span>}
+                                            {f.label} <span className="param-required">*</span>
                                         </label>
                                         <input
                                             type="date"
@@ -367,8 +365,7 @@ const RowCard = ({
                                         className={`activity-row-card__field ${isWide ? 'activity-row-card__field--wide' : ''}`}
                                     >
                                         <label className="parameter-row__label">
-                                            {f.label}
-                                            {f.required && <span className="param-required">*</span>}
+                                            {f.label} <span className="param-required">*</span>
                                         </label>
                                         {renderField(
                                             f,
@@ -445,20 +442,20 @@ const RowCard = ({
                     {Object.entries(row.existingDocuments ?? {}).some(
                         ([, v]) => Array.isArray(v) && v.length > 0
                     ) && (
-                        <div className="activity-row-card__existing-docs">
-                            {Object.entries(row.existingDocuments).map(([docType, paths]) =>
-                                Array.isArray(paths) &&
-                                paths.map((p, pi) => (
-                                    <span key={`${docType}-${pi}`} className="activity-row-card__existing-doc-tag">
-                                        <FileText size={12} />
-                                        {config.documents.find(
-                                            (d) => docKey(d) === docType
-                                        ) ?? docType}: {p.split('/').pop() || p}
-                                    </span>
-                                ))
-                            )}
-                        </div>
-                    )}
+                            <div className="activity-row-card__existing-docs">
+                                {Object.entries(row.existingDocuments).map(([docType, paths]) =>
+                                    Array.isArray(paths) &&
+                                    paths.map((p, pi) => (
+                                        <span key={`${docType}-${pi}`} className="activity-row-card__existing-doc-tag">
+                                            <FileText size={12} />
+                                            {config.documents.find(
+                                                (d) => docKey(d) === docType
+                                            ) ?? docType}: {p.split('/').pop() || p}
+                                        </span>
+                                    ))
+                                )}
+                            </div>
+                        )}
                 </div>
             </div>
         </div>
@@ -477,14 +474,13 @@ const ParameterRow = ({
     onAdd,
     disabled = false,
     isContextSelected = false,
-    hasSubmittedSibling = false,
     userRole: userRoleProp,
     autoEdit = false,
 }) => {
     const { user } = useAuth();
     const userRole = userRoleProp || user?.erp_users_type;
-    const isHOD     = ['HOD', 'COORDINATOR'].includes(userRole);
-    const isAdmin   = ['OIA_ADMIN', 'SUPER_ADMIN'].includes(userRole);
+    const isHOD = ['HOD', 'COORDINATOR'].includes(userRole);
+    const isAdmin = ['OIA_ADMIN', 'SUPER_ADMIN'].includes(userRole);
     const isSuperAdmin = userRole === 'SUPER_ADMIN';
 
     // Resolve config (or fallback)
@@ -504,25 +500,29 @@ const ParameterRow = ({
         setRows(rowsFromActivityData(existingData?.activity_data, config));
         setIsEditing(!existingData);
         setErrors([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [existingData]);
 
-    const isSubmitted             = existingData?.status === 'SUBMITTED';
-    const isApproved              = existingData?.status === 'APPROVED';
-    const isRejected              = existingData?.status === 'REJECTED';
-    const isClarificationRequested= existingData?.status === 'CLARIFICATION_REQUESTED';
-    const isDraft                 = existingData?.status === 'DRAFT' || !existingData;
-    const isEditable              = (isDraft || isRejected || isClarificationRequested)
-                                    && !isHOD && !isAdminLocked;
+    const isSubmitted = existingData?.status === 'SUBMITTED';
+    const isApproved = existingData?.status === 'APPROVED';
+    const isRejected = existingData?.status === 'REJECTED';
+    const isClarificationRequested = existingData?.status === 'CLARIFICATION_REQUESTED';
+    const isDraft = existingData?.status === 'DRAFT' || !existingData;
+    const isEditable = (isDraft || isRejected || isClarificationRequested)
+        && !isHOD && !isAdminLocked;
 
     // Validation
     const validate = () => {
         const errs = [];
+        
+        if (!activityTitle || !activityTitle.trim()) {
+            errs.push('Activity Title is required');
+        }
+
         rows.forEach((row, i) => {
-            const label = rows.length > 1 ? `Row ${i + 1}: ` : '';
-            // Required fields
+            const label = rows.length > 1 ? `Entry ${i + 1}: ` : '';
+            // All data entry fields are compulsory
             config.fields.forEach((f) => {
-                if (!f.required) return;
                 const val = getRowFieldValue(row, f.id);
                 const empty = Array.isArray(val) ? val.length === 0 : !val;
                 if (empty) errs.push(`${label}${f.label} is required`);
@@ -574,7 +574,7 @@ const ParameterRow = ({
         setErrors([]);
     };
 
-    const addRow    = () => setRows((prev) => [...prev, makeEmptyRowForConfig(config)]);
+    const addRow = () => setRows((prev) => [...prev, makeEmptyRowForConfig(config)]);
     const removeRow = (idx) => setRows((prev) => prev.filter((_, i) => i !== idx));
     const updateRow = (idx, updated) => setRows((prev) =>
         prev.map((r, i) => (i === idx ? updated : r))
@@ -615,13 +615,13 @@ const ParameterRow = ({
 
             {!isAdminLocked && (
                 <>
-                    {/* Activity-level title (optional) */}
+                    {/* Activity-level title */}
                     <div className="parameter-row__field">
-                        <label className="parameter-row__label">Activity Title</label>
+                        <label className="parameter-row__label">Activity Title <span className="param-required">*</span></label>
                         <input
                             type="text"
                             className="parameter-row__input-text"
-                            placeholder="Overall activity title (optional)…"
+                            placeholder="Overall activity title…"
                             value={activityTitle}
                             onChange={(e) => setActivityTitle(e.target.value)}
                             disabled={!isEditing || !isEditable || disabled}
@@ -740,7 +740,7 @@ const ParameterRow = ({
                             </span>
                         )}
                         {isHOD && <span className="action-label">View Only</span>}
-                        {isContextSelected && !isHOD && !hasSubmittedSibling && (
+                        {isContextSelected && !isHOD && (
                             <ActionButton
                                 variant="secondary"
                                 onClick={onAdd}
