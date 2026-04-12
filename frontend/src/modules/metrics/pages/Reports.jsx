@@ -22,6 +22,8 @@ const Reports = () => {
         quarter_id: '',
         campus_id: '',
         department_id: '',
+        parameter_id: '',
+        university_id: '',
         status: 'APPROVED',
     });
 
@@ -67,6 +69,8 @@ const Reports = () => {
                 quarter_id:       filters.quarter_id       || undefined,
                 campus_id:        filters.campus_id        || undefined,
                 department_id:    filters.department_id    || undefined,
+                parameter_id:     filters.parameter_id     || undefined,
+                university_id:    filters.university_id    || undefined,
                 // Non-admins always scoped to their mapping
                 ...(!isAdmin && mappingId ? { erp_campus_department_mapping_id: mappingId } : {}),
             };
@@ -151,7 +155,9 @@ const Reports = () => {
         filters.academic_year_id ||
         filters.quarter_id       ||
         filters.campus_id        ||
-        filters.department_id
+        filters.department_id    ||
+        filters.parameter_id     ||
+        filters.university_id
     );
 
     const academicYearLabel = filters.academic_year_id
