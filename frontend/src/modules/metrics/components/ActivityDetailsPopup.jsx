@@ -10,8 +10,8 @@ import './ActivityDetailsPopup.css';
 // ─── Role constants ───────────────────────────────────────────────────────────
 
 const ADMIN_ROLES = ['OIA_ADMIN', 'SUPER_ADMIN'];
-const HOD_ROLES   = ['HOD', 'COORDINATOR'];
-const ELEVATED    = [...HOD_ROLES, ...ADMIN_ROLES];
+const HOD_ROLES = ['HOD', 'COORDINATOR'];
+const ELEVATED = [...HOD_ROLES, ...ADMIN_ROLES];
 
 // ─── Small atoms ─────────────────────────────────────────────────────────────
 
@@ -39,8 +39,9 @@ const Section = ({ title, icon: Icon, children, accent }) => (
 
 // ─── Document row ─────────────────────────────────────────────────────────────
 
-const DocItem = ({ label, paths }) => {
-    if (!paths || paths.length === 0) {
+const DocItem = ({ label, paths, onViewDoc, activityId, rowIndex, dk, hasFallbackDoc }) => {
+    const hasPaths = Array.isArray(paths) && paths.length > 0;
+    if (!hasFallbackDoc && !hasPaths) {
         return (
             <div className="adp-doc-item adp-doc-item--empty">
                 <FileText size={13} className="adp-doc-item__icon" />
@@ -49,23 +50,45 @@ const DocItem = ({ label, paths }) => {
             </div>
         );
     }
+
+    if (hasFallbackDoc && !hasPaths) {
+        // Fallback: single button with no specific index (uses backend fallback)
+        return (
+            <div className="adp-doc-item">
+                <FileText size={13} className="adp-doc-item__icon" />
+                <span className="adp-doc-item__label">{label}</span>
+                <div className="adp-doc-item__actions">
+                    <button
+                        type="button"
+                        onClick={() => onViewDoc(activityId)}
+                        className="adp-doc-btn"
+                        title="Download Document"
+                    >
+                        <Download size={11} style={{ marginRight: 4 }} />
+                        Download
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // Render one button per uploaded file
     return (
         <div className="adp-doc-item">
             <FileText size={13} className="adp-doc-item__icon" />
             <span className="adp-doc-item__label">{label}</span>
             <div className="adp-doc-item__actions">
-                {paths.map((p, i) => (
-                    <a
-                        key={i}
-                        href={p}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                {paths.map((p, fi) => (
+                    <button
+                        key={fi}
+                        type="button"
+                        onClick={() => onViewDoc(activityId, rowIndex, dk, fi)}
                         className="adp-doc-btn"
-                        title={`Download: ${p}`}
+                        title={p.split('/').pop() || `File ${fi + 1}`}
                     >
-                        <Download size={11} />
-                        {paths.length > 1 ? `File ${i + 1}` : 'Download'}
-                    </a>
+                        <Download size={11} style={{ marginRight: 4 }} />
+                        {paths.length > 1 ? `File ${fi + 1}` : 'Download'}
+                    </button>
                 ))}
             </div>
         </div>
@@ -74,7 +97,7 @@ const DocItem = ({ label, paths }) => {
 
 // ─── Activity rows (fully dynamic) ───────────────────────────────────────────
 
-const ActivityRows = ({ activity, config, universities }) => {
+const ActivityRows = ({ activity, config, universities, onViewDoc }) => {
     const rows = activity.activity_data?.rows ?? [];
 
     const getUniNames = (ids) =>
@@ -87,7 +110,7 @@ const ActivityRows = ({ activity, config, universities }) => {
             .join(', ') || '—';
 
     const allFields = config?.fields ?? [];
-    const docSlots  = config?.documents ?? [];
+    const docSlots = config?.documents ?? [];
 
     if (rows.length === 0) {
         return (
@@ -104,9 +127,9 @@ const ActivityRows = ({ activity, config, universities }) => {
                 const fieldItems = allFields.map((f) => {
                     let value;
                     if (f.id === 'partner_universities') value = getUniNames(row.partner_universities);
-                    else if (f.id === 'start_date')        value = row.start_date || null;
-                    else if (f.id === 'end_date')          value = row.end_date   || null;
-                    else                                   value = row.fields?.[f.id];
+                    else if (f.id === 'start_date') value = row.start_date || null;
+                    else if (f.id === 'end_date') value = row.end_date || null;
+                    else value = row.fields?.[f.id];
                     return { field: f, value };
                 });
 
@@ -120,8 +143,8 @@ const ActivityRows = ({ activity, config, universities }) => {
                             const iconMap = {
                                 partner_universities: Globe,
                                 start_date: Calendar,
-                                end_date:   Calendar,
-                                country:    MapPin,
+                                end_date: Calendar,
+                                country: MapPin,
                             };
                             return (
                                 <Field
@@ -142,18 +165,45 @@ const ActivityRows = ({ activity, config, universities }) => {
                         })}
 
                         {/* Document slots */}
-                        {docSlots.length > 0 && (
-                            <div className="adp-row-docs">
-                                <div className="adp-row-docs__label">Documents</div>
-                                {docSlots.map((slot) => (
-                                    <DocItem
-                                        key={slot}
-                                        label={slot}
-                                        paths={existingDocs[docKey(slot)]}
-                                    />
-                                ))}
-                            </div>
-                        )}
+                        {(docSlots.length > 0 || (row.partner_universities ?? []).some(id => {
+                            const u = universities.find(uni => String(uni.university_id) === String(id));
+                            return u && u.agreement_doc_path;
+                        })) && (
+                                <div className="adp-row-docs">
+                                    <div className="adp-row-docs__label">Documents</div>
+                                    {docSlots.length > 0 ? docSlots.map((slot) => {
+                                        const dk = docKey(slot);
+                                        const paths = existingDocs[dk];
+                                        const hasFallbackDoc = (row.partner_universities ?? []).some(id => {
+                                            const u = universities.find(uni => String(uni.university_id) === String(id));
+                                            return u && u.agreement_doc_path;
+                                        });
+                                        return (
+                                            <DocItem
+                                                key={slot}
+                                                label={slot}
+                                                paths={paths}
+                                                onViewDoc={onViewDoc}
+                                                activityId={activity.activity_id}
+                                                rowIndex={ri}
+                                                dk={dk}
+                                                hasFallbackDoc={hasFallbackDoc}
+                                            />
+                                        );
+                                    }) : (
+                                        <DocItem
+                                            key="fallback"
+                                            label="Supporting MOU Document"
+                                            paths={[]}
+                                            onViewDoc={onViewDoc}
+                                            activityId={activity.activity_id}
+                                            rowIndex={ri}
+                                            dk={null}
+                                            hasFallbackDoc={true}
+                                        />
+                                    )}
+                                </div>
+                            )}
                     </div>
                 );
             })}
@@ -169,6 +219,7 @@ const ActivityDetailsPopup = memo(({
     userRole,
     masterData,
     onClose,
+    onViewDoc,
 }) => {
     // Lock background scroll while popup is open, restore on unmount
     useEffect(() => {
@@ -181,17 +232,17 @@ const ActivityDetailsPopup = memo(({
 
     const { universities = [], campuses = [], departments = [], mappings = [] } = masterData;
 
-    const isAdmin  = ADMIN_ROLES.includes(userRole);
+    const isAdmin = ADMIN_ROLES.includes(userRole);
     const elevated = ELEVATED.includes(userRole);
 
-    const mapping    = mappings.find(
+    const mapping = mappings.find(
         (m) => String(m.erp_campus_department_mapping_id) === String(activity.erp_campus_department_mapping_id)
     );
-    const campus     = campuses.find((c) => c.erp_campus_id === mapping?.campus_id);
+    const campus = campuses.find((c) => c.erp_campus_id === mapping?.campus_id);
     const department = departments.find((d) => d.erp_department_id === mapping?.dept_id);
 
     const approvedById = activity.approved_user_id;
-    const approvedAt   = activity.approved_time
+    const approvedAt = activity.approved_time
         ? new Date(activity.approved_time).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
         : null;
 
@@ -200,7 +251,7 @@ const ActivityDetailsPopup = memo(({
         return userRole === 'FACULTY' ? 'Approved by Admin' : `User #${approvedById}`;
     })();
 
-    const statusCls   = (activity.status ?? 'DRAFT').toLowerCase().replace(/_/g, '-');
+    const statusCls = (activity.status ?? 'DRAFT').toLowerCase().replace(/_/g, '-');
     const statusLabel = (activity.status ?? 'DRAFT').replace(/_/g, ' ');
 
     return (
@@ -235,28 +286,28 @@ const ActivityDetailsPopup = memo(({
                 >
                     {/* Basic Info */}
                     <Section title="Basic Information" icon={User} accent="blue">
-                        <Field label="Faculty ID"    value={`#${activity.created_user_id ?? '—'}`} icon={User} />
+                        <Field label="Faculty ID" value={`#${activity.created_user_id ?? '—'}`} icon={User} />
                         {elevated && (
                             <>
                                 <Field label="Department" value={department?.department_name ?? (mapping?.dept_id ? `Dept #${mapping.dept_id}` : null)} icon={BookOpen} />
-                                <Field label="Campus"     value={campus?.campus_name         ?? (mapping?.campus_id ? `Campus #${mapping.campus_id}` : null)} icon={MapPin} />
+                                <Field label="Campus" value={campus?.campus_name ?? (mapping?.campus_id ? `Campus #${mapping.campus_id}` : null)} icon={MapPin} />
                             </>
                         )}
                         <Field label="Academic Year" value={activity.erp_academic_year_id ? `Year #${activity.erp_academic_year_id}` : null} icon={Calendar} />
-                        <Field label="Quarter"       value={activity.quarter_id ? `Q${activity.quarter_id}` : null} />
-                        <Field label="Parameter"     value={`#${activity.parameter_id}`} icon={BookOpen} />
+                        <Field label="Quarter" value={activity.quarter_id ? `Q${activity.quarter_id}` : null} />
+                        <Field label="Parameter" value={`#${activity.parameter_id}`} icon={BookOpen} />
                     </Section>
 
                     {/* Activity Details */}
                     <Section title="Activity Details" icon={Globe} accent="indigo">
-                        <ActivityRows activity={activity} config={config} universities={universities} />
+                        <ActivityRows activity={activity} config={config} universities={universities} onViewDoc={onViewDoc} />
                     </Section>
 
                     {/* Approval Info */}
                     {(activity.status === 'APPROVED' || approvedById) && (
                         <Section title="Approval Information" icon={CheckCircle} accent="green">
-                            <Field label="Approved By"    value={approverLabel} icon={Shield} />
-                            <Field label="Approval Date"  value={approvedAt}    icon={Clock} />
+                            <Field label="Approved By" value={approverLabel} icon={Shield} />
+                            <Field label="Approval Date" value={approvedAt} icon={Clock} />
                             {isAdmin && (
                                 <Field label="Approval Campus" value={campus?.campus_name ?? (mapping?.campus_id ? `Campus #${mapping.campus_id}` : null)} icon={Building2} />
                             )}

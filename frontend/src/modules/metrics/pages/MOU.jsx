@@ -293,8 +293,8 @@ const MOU = () => {
                                                 <Edit2 size={15} />
                                             </ActionButton>
                                             {isSuperAdmin && (
-                                                <ActionButton 
-                                                    variant="danger" 
+                                                <ActionButton
+                                                    variant="danger"
                                                     onClick={() => handleDelete(mou.mou_id)}
                                                     title="Delete MOU"
                                                 >

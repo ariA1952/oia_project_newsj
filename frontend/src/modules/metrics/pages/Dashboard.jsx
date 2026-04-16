@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
     Activity, FileText, BookOpen, GraduationCap,
-    Users, ChevronLeft, AlertCircle
+    Users, ChevronLeft, AlertCircle, Globe, Mic,
+    MonitorPlay, UserCheck, UserPlus, ArrowUpRight,
+    ArrowDownLeft, Briefcase, Layers
 } from 'lucide-react';
 import KPIWidget from '../components/KPIWidget';
 import FilterBar from '../components/FilterBar';
@@ -10,8 +12,32 @@ import Notification from '../../../common/Notification';
 import ActionButton from '../../../common/ActionButton';
 import { useAuth } from '../../../common/AuthContext';
 import useMetricsMasterData from '../hooks/useMetricsMasterData';
-import { getCollaborationActivities, getMOUs } from '../services/metricsService';
+import { getDashboardSummary, getCollaborationActivities } from '../services/metricsService';
 import './Dashboard.css';
+
+// ─── Icon & colour config per parameter code ────────────────────────────────
+// Falls back to a default if a parameter code is not listed here.
+const PARAM_STYLE = {
+    CONF:   { icon: <Users size={20} />,          color: '#d97706' },
+    CURR:   { icon: <BookOpen size={20} />,       color: '#7c3aed' },
+    SDG:    { icon: <Globe size={20} />,          color: '#059669' },
+    PROF:   { icon: <Briefcase size={20} />,      color: '#0369a1' },
+    WEB:    { icon: <MonitorPlay size={20} />,    color: '#0891b2' },
+    OTC:    { icon: <Mic size={20} />,            color: '#6d28d9' },
+    OTF:    { icon: <UserCheck size={20} />,      color: '#b45309' },
+    INFAC:  { icon: <ArrowDownLeft size={20} />,  color: '#0f766e' },
+    OUTFAC: { icon: <ArrowUpRight size={20} />,   color: '#ea580c' },
+    PUB:    { icon: <FileText size={20} />,       color: '#2563eb' },
+    RES:    { icon: <Activity size={20} />,       color: '#4f46e5' },
+    INSTU:  { icon: <GraduationCap size={20} />,  color: '#16a34a' },
+    OUTSTU: { icon: <GraduationCap size={20} />,  color: '#dc2626' },
+    EXCH:   { icon: <UserPlus size={20} />,       color: '#9333ea' },
+};
+
+const DEFAULT_STYLE = { icon: <Layers size={20} />, color: '#6b7280' };
+
+// Status filter applied in the detail drill-down view
+const DASHBOARD_STATUSES = ['APPROVED', 'SUBMITTED', 'CLARIFICATION_REQUESTED'];
 
 const Dashboard = () => {
     const { user } = useAuth();
@@ -26,78 +52,65 @@ const Dashboard = () => {
         department_id: '',
         university_id: '',
     });
-    const [activities, setActivities] = useState([]);
+    const [summaryData, setSummaryData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [notification, setNotification] = useState(null);
-    const [kpis, setKpis] = useState({
-        totalMOUs: 0, totalApproved: 0, totalPublications: 0,
-        facultyExchange: 0, studentExchange: 0, totalConference: 0,
-        totalJointResearch: 0, totalRejected: 0,
-    });
     const [selectedKPI, setSelectedKPI] = useState(null);
-    const [paramIds, setParamIds] = useState({});
+    const [detailActivities, setDetailActivities] = useState([]);
+    const [detailLoading, setDetailLoading] = useState(false);
 
-    useEffect(() => {
-        if (!masterData.parameters?.length) return;
-        const find = (keyword) =>
-            masterData.parameters.find(p =>
-                p.parameter_name?.toLowerCase().includes(keyword.toLowerCase())
-            )?.parameter_id ?? null;
-        setParamIds({
-            studentExchange: find('Student Exchange'),
-            facultyExchange: find('Faculty Exchange'),
-            conference:      find('Conference'),
-            publications:    find('Joint Publication'),
+    // ── Build param code lookup from master data ────────────────────────
+    const paramCodeMap = {};
+    if (masterData.parameters?.length) {
+        masterData.parameters.forEach((p) => {
+            paramCodeMap[p.parameter_id] = p.parameter_code;
         });
-    }, [masterData.parameters]);
+    }
 
-    const fetchActivities = useCallback(async () => {
+    // ── Fetch aggregated dashboard summary from API ─────────────────────
+    const fetchSummary = useCallback(async () => {
         setLoading(true);
         try {
-            const queryParams = {
-                ...filters,
-                ...(!isAdmin && mappingId ? { erp_campus_department_mapping_id: mappingId } : {}),
-            };
-            const [data, mous] = await Promise.all([
-                getCollaborationActivities(queryParams),
-                getMOUs().catch(() => []),
-            ]);
-            setActivities(data);
-            computeKPIs(data, mous);
+            const apiFilters = { ...filters };
+            // Remove university_id — dashboard summary doesn't use it
+            delete apiFilters.university_id;
+            if (!isAdmin && mappingId) {
+                apiFilters.erp_campus_department_mapping_id = mappingId;
+            }
+            const data = await getDashboardSummary(apiFilters);
+            setSummaryData(data.parameters || []);
         } catch {
-            setNotification({ message: 'Failed to fetch activities', type: 'error' });
+            setNotification({ message: 'Failed to fetch dashboard summary', type: 'error' });
         } finally {
             setLoading(false);
         }
-    }, [filters, mappingId, isAdmin, paramIds]);
+    }, [filters, mappingId, isAdmin]);
 
-    useEffect(() => { fetchActivities(); }, [fetchActivities]);
+    useEffect(() => { fetchSummary(); }, [fetchSummary]);
 
-    const computeKPIs = (data, mous = []) => {
-        const approved = data.filter(a => a.status === 'APPROVED');
-        const rejected = data.filter(a => a.status === 'REJECTED');
-        const countByParam = (pid) => pid != null ? approved.filter(a => a.parameter_id === pid).length : 0;
-        const pubRecords = paramIds.publications != null
-            ? approved.filter(a => a.parameter_id === paramIds.publications) : [];
-        const totalPublications = pubRecords.reduce((sum, a) => sum + (Number(a.numeric_value) || 0), 0) || pubRecords.length;
-        setKpis({
-            totalMOUs: mous.length, totalApproved: approved.length, totalPublications,
-            facultyExchange: countByParam(paramIds.facultyExchange),
-            studentExchange: countByParam(paramIds.studentExchange),
-            totalConference: countByParam(paramIds.conference),
-            totalJointResearch: pubRecords.length, totalRejected: rejected.length,
-        });
+    // ── Detail drill-down: fetch filtered activities for a parameter ────
+    const handleKPIClick = async (param) => {
+        setSelectedKPI(param);
+        setDetailLoading(true);
+        try {
+            const queryParams = {
+                ...filters,
+                parameter_id: param.parameter_id,
+                ...(!isAdmin && mappingId ? { erp_campus_department_mapping_id: mappingId } : {}),
+            };
+            const data = await getCollaborationActivities(queryParams);
+            // Apply dashboard status filter client-side
+            const filtered = data.filter((a) => DASHBOARD_STATUSES.includes(a.status));
+            setDetailActivities(filtered);
+        } catch {
+            setNotification({ message: 'Failed to fetch details', type: 'error' });
+            setDetailActivities([]);
+        } finally {
+            setDetailLoading(false);
+        }
     };
 
     if (masterDataLoading) return <Loader fullscreen />;
-
-    const filteredActivitiesForKPI = selectedKPI
-        ? (selectedKPI.id === 'APPROVED'
-            ? activities.filter(a => a.status === 'APPROVED')
-            : selectedKPI.id === 'REJECTED'
-                ? activities.filter(a => a.status === 'REJECTED')
-                : activities.filter(a => a.parameter_id === selectedKPI.id && a.status === 'APPROVED'))
-        : [];
 
     return (
         <div className="dashboard">
@@ -124,37 +137,53 @@ const Dashboard = () => {
                         <ActionButton variant="secondary" onClick={() => setSelectedKPI(null)}>
                             <ChevronLeft size={16} /> Back to Dashboard
                         </ActionButton>
-                        <h2 className="dashboard__detail-title">Detail: {selectedKPI.title}</h2>
+                        <h2 className="dashboard__detail-title">Detail: {selectedKPI.parameter_name}</h2>
                     </div>
-                    <div className="dashboard__table-container">
-                        <table className="dashboard__table">
-                            <thead><tr><th>Parameter</th><th>Partner University</th><th>Value</th><th>Status</th></tr></thead>
-                            <tbody>
-                                {filteredActivitiesForKPI.length > 0
-                                    ? filteredActivitiesForKPI.map((activity) => (
-                                        <tr key={activity.activity_id}>
-                                            <td>{masterData.parameters.find(p => p.parameter_id === activity.parameter_id)?.parameter_name || 'N/A'}</td>
-                                            <td>{masterData.universities.find(u => u.university_id === activity.university_id)?.university_name || 'N/A'}</td>
-                                            <td>{activity.numeric_value}</td>
-                                            <td><span className={`status-badge status-badge--${activity.status.toLowerCase()}`}>{activity.status}</span></td>
-                                        </tr>
-                                    ))
-                                    : <tr><td colSpan="4" className="dashboard__table-empty">No records found for this metric</td></tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                    {detailLoading ? (
+                        <div className="dashboard__loader"><Loader size="large" /></div>
+                    ) : (
+                        <div className="dashboard__table-container">
+                            <table className="dashboard__table">
+                                <thead><tr><th>Parameter</th><th>Partner University</th><th>Value</th><th>Status</th><th>Entered By</th></tr></thead>
+                                <tbody>
+                                    {detailActivities.length > 0
+                                        ? detailActivities.map((activity) => (
+                                            <tr key={activity.activity_id}>
+                                                <td>{masterData.parameters.find(p => p.parameter_id === activity.parameter_id)?.parameter_name || 'N/A'}</td>
+                                                <td>{masterData.universities.find(u => u.university_id === activity.university_id)?.university_name || 'N/A'}</td>
+                                                <td>{activity.numeric_value}</td>
+                                                <td><span className={`status-badge status-badge--${activity.status.toLowerCase()}`}>{activity.status}</span></td>
+                                                <td>{activity.created_user_id ?? '—'}</td>
+                                            </tr>
+                                        ))
+                                        : <tr><td colSpan="5" className="dashboard__table-empty">No records found for this metric</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <div className="dashboard__kpis">
-                    <KPIWidget title="Total MOUs"           value={kpis.totalMOUs}         icon={<FileText size={20} />}      color="#16a34a" onClick={() => setSelectedKPI({ id: 'MOUS',   title: 'Total MOUs' })} />
-                    <KPIWidget title="Total Approved"       value={kpis.totalApproved}     icon={<Activity size={20} />}      color="#2563eb" onClick={() => setSelectedKPI({ id: 'APPROVED', title: 'All Approved Activities' })} />
-                    <KPIWidget title="Total Publication"    value={kpis.totalPublications} icon={<BookOpen size={20} />}      color="#7c3aed" onClick={() => setSelectedKPI({ id: paramIds.publications, title: 'Joint Publications' })} />
-                    <KPIWidget title="Total Faculty Exchange" value={kpis.facultyExchange} icon={<Users size={20} />}         color="#0891b2" onClick={() => setSelectedKPI({ id: paramIds.facultyExchange, title: 'Faculty Exchange' })} />
-                    <KPIWidget title="Total Student Exchange" value={kpis.studentExchange} icon={<GraduationCap size={20} />} color="#ea580c" onClick={() => setSelectedKPI({ id: paramIds.studentExchange, title: 'Student Exchange Programs' })} />
-                    <KPIWidget title="Total Conference"     value={kpis.totalConference}   icon={<Users size={20} />}         color="#d97706" onClick={() => setSelectedKPI({ id: paramIds.conference, title: 'Conferences' })} />
-                    <KPIWidget title="Total Joint Research" value={kpis.totalJointResearch}icon={<Activity size={20} />}      color="#4f46e5" onClick={() => setSelectedKPI({ id: paramIds.publications, title: 'Joint Research Records' })} />
-                    <KPIWidget title="Total Rejected"       value={kpis.totalRejected}     icon={<AlertCircle size={20} />}   color="#dc2626" onClick={() => setSelectedKPI({ id: 'REJECTED', title: 'Rejected Activities' })} />
+                    {summaryData.map((param) => {
+                        const code = paramCodeMap[param.parameter_id] || '';
+                        const style = PARAM_STYLE[code] || DEFAULT_STYLE;
+                        const contributorCount = param.faculty_ids?.length || 0;
+                        const subtitle = contributorCount > 0
+                            ? `${contributorCount} contributor${contributorCount > 1 ? 's' : ''}`
+                            : null;
+                        return (
+                            <KPIWidget
+                                key={param.parameter_id}
+                                title={param.parameter_name}
+                                value={param.count}
+                                icon={style.icon}
+                                color={style.color}
+                                subtitle={subtitle}
+                                onClick={() => handleKPIClick(param)}
+                            />
+                        );
+                    })}
                 </div>
             )}
 

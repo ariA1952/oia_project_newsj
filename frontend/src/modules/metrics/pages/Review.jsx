@@ -24,6 +24,7 @@ import {
     sendClarificationReply,
     downloadActivityDocument,
     deleteCollaborationActivity,
+    getPartnerUniversities,
 } from '../services/metricsService';
 import { getParamConfig, docKey } from '../config/parameterConfigs';
 import ActivityDetailsPopup from '../components/ActivityDetailsPopup';
@@ -131,17 +132,23 @@ const RowDetailPanel = memo(({ activity, config, universities, onViewDoc }) => {
                     <RowFieldSummary row={row} config={config} universities={universities} />
 
                     {/* Per-row document downloads */}
-                    {Object.entries(row.documents ?? {}).some(([, v]) => Array.isArray(v) && v.length > 0) && (
-                        <div className="rv-row-docs" style={{ marginTop: 4 }}>
-                            <button
-                                type="button"
-                                className="rv-doc-btn"
-                                onClick={() => onViewDoc(activity.activity_id)}
-                            >
-                                <Download size={11} /> Download Documents
-                            </button>
-                        </div>
-                    )}
+                    {(
+                        Object.entries(row.documents ?? {}).some(([, v]) => Array.isArray(v) && v.length > 0) ||
+                        (row.partner_universities ?? []).some(id => {
+                            const u = universities.find(uni => String(uni.university_id) === String(id));
+                            return u && u.agreement_doc_path;
+                        })
+                    ) && (
+                            <div className="rv-row-docs" style={{ marginTop: 4 }}>
+                                <button
+                                    type="button"
+                                    className="rv-doc-btn"
+                                    onClick={() => onViewDoc(activity.activity_id)}
+                                >
+                                    <Download size={11} /> Download Documents
+                                </button>
+                            </div>
+                        )}
                 </div>
             ))}
         </div>
@@ -431,6 +438,12 @@ const Review = () => {
     const [bulkRejectRemarks, setBulkRejectRemarks] = useState('');
     const [detailsModal, setDetailsModal] = useState({ show: false, activity: null, config: null });
 
+    // Fetch all universities independently so NO_MOU and pending ones aren't obscured
+    const [allUniversities, setAllUniversities] = useState([]);
+    useEffect(() => {
+        getPartnerUniversities({ skip: 0, limit: 1000 }).then(setAllUniversities).catch(() => { });
+    }, []);
+
     // ─── Profile auto-fill ──────────────────────────────────────────────────
     useEffect(() => {
         if (profileLoading) return;
@@ -490,9 +503,9 @@ const Review = () => {
     const getParam = (id) => masterData.parameters.find((p) => p.parameter_id === id);
     const getParamName = (id) => getParam(id)?.parameter_name ?? `Parameter ${id}`;
 
-    const viewDoc = async (id) => {
+    const viewDoc = async (id, rowIndex, docType, fileIndex) => {
         try {
-            window.open(await downloadActivityDocument(id), '_blank');
+            window.open(await downloadActivityDocument(id, rowIndex, docType, fileIndex), '_blank');
         } catch {
             setNotification({ message: 'Failed to load document', type: 'error' });
         }
@@ -679,7 +692,7 @@ const Review = () => {
                                     paramName={getParamName(pid)}
                                     activities={paramActivities}
                                     config={config}
-                                    universities={masterData.universities}
+                                    universities={allUniversities.length > 0 ? allUniversities : masterData.universities}
                                     userRole={userRole}
                                     canAct={canAct}
                                     isSuperAdmin={isSuperAdmin}
@@ -804,8 +817,12 @@ const Review = () => {
                     activity={detailsModal.activity}
                     config={detailsModal.config}
                     userRole={userRole}
-                    masterData={masterData}
+                    masterData={{
+                        ...masterData,
+                        universities: allUniversities.length > 0 ? allUniversities : masterData.universities
+                    }}
                     onClose={() => setDetailsModal({ show: false, activity: null, config: null })}
+                    onViewDoc={viewDoc}
                 />
             )}
 

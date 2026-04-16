@@ -35,10 +35,12 @@ const FALLBACK_CONFIG = {
 
 const MultiUniversitySelect = ({ value = [], onChange, universities = [], disabled }) => {
     const { user } = useAuth();
-    const isAdmin = ['OIA_ADMIN', 'SUPER_ADMIN'].includes(user?.erp_users_type);
+    const isFaculty = user?.erp_users_type === 'FACULTY';
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [showSuggestModal, setShowSuggestModal] = useState(false);
+    // Track universities added in this session so they can be selected
+    const [localUniversities, setLocalUniversities] = useState([]);
     const ref = useRef(null);
 
     useEffect(() => {
@@ -47,22 +49,28 @@ const MultiUniversitySelect = ({ value = [], onChange, universities = [], disabl
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    const ids = value.map(String);
+    const ids = Array.isArray(value) ? value.map(String) : [];
 
     const toggle = (id) => {
         const str = String(id);
         onChange(ids.includes(str) ? ids.filter((v) => v !== str) : [...ids, str]);
     };
 
-    const filtered = universities.filter((u) =>
+    // Combine prop universities with local universities
+    const combinedUniversities = [...universities, ...localUniversities.filter(lu => !universities.some(u => u.university_id === lu.university_id))];
+
+    const filtered = combinedUniversities.filter((u) =>
         u.university_name?.toLowerCase().includes(search.toLowerCase())
     );
-    const selected = universities.filter((u) => ids.includes(String(u.university_id)));
+    const selected = combinedUniversities.filter((u) => ids.includes(String(u.university_id)));
     const label = selected.length === 0
         ? '— Select —'
         : selected.length === 1
             ? selected[0].university_name
             : `${selected.length} selected`;
+
+    // Names for duplicate detection in the modal
+    const existingNames = universities.map((u) => u.university_name).filter(Boolean);
 
     return (
         <>
@@ -91,19 +99,33 @@ const MultiUniversitySelect = ({ value = [], onChange, universities = [], disabl
                                 onChange={(e) => setSearch(e.target.value)}
                                 autoFocus
                             />
-                            {!isAdmin && !disabled && (
+                            {/* Faculty can add universities during data entry */}
+                            {isFaculty && !disabled && (
                                 <button
                                     type="button"
                                     className="multi-uni-suggest-btn"
-                                    title="Suggest a new university"
+                                    title="Add a new university"
                                     onClick={() => { setOpen(false); setShowSuggestModal(true); }}
                                 >
-                                    <Plus size={13} /> Add
+                                    <Plus size={13} /> Add University
                                 </button>
                             )}
                         </div>
                         {filtered.length === 0 && (
-                            <div className="multi-uni-empty">No universities found</div>
+                            <div className="multi-uni-empty">
+                                {search
+                                    ? 'No universities match your search.'
+                                    : 'No universities found.'}
+                                {isFaculty && !disabled && !search && (
+                                    <button
+                                        type="button"
+                                        className="multi-uni-suggest-btn multi-uni-suggest-btn--inline"
+                                        onClick={() => { setOpen(false); setShowSuggestModal(true); }}
+                                    >
+                                        <Plus size={12} /> Add University
+                                    </button>
+                                )}
+                            </div>
                         )}
                         {filtered.map((u) => {
                             const id = String(u.university_id);
@@ -145,12 +167,29 @@ const MultiUniversitySelect = ({ value = [], onChange, universities = [], disabl
                 )}
             </div>
 
+            {/* ── Add University Modal (Faculty only) ──────────────────── */}
             {showSuggestModal && (
                 <SuggestUniversityModal
                     onClose={() => setShowSuggestModal(false)}
-                    onSuccess={() => {
-                        // Modal shows its own success state; we just keep it open until user dismisses
+                    onSuccess={(newUni) => {
+                        if (newUni && newUni.university_id) {
+                            // Immediately add the new university to local options
+                            setLocalUniversities(prev => {
+                                const exists = prev.find(u => u.university_id === newUni.university_id);
+                                if (exists) return prev;
+                                return [...prev, newUni];
+                            });
+                            // Auto-select the newly added university
+                            const currentIds = Array.isArray(value) ? value.map(String) : [];
+                            if (!currentIds.includes(String(newUni.university_id))) {
+                                onChange([...currentIds, String(newUni.university_id)]);
+                            }
+                        }
+                        if (newUni && newUni.status === 'NO_MOU') {
+                            setShowSuggestModal(false); // fast close for NO_MOU
+                        }
                     }}
+                    existingNames={existingNames}
                 />
             )}
         </>

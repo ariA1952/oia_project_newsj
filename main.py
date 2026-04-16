@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException, RequestValidationError
 from backend.routers import partner_router, activity_router, auth_router, mou_router, general_router
+from backend.dashboard_router import dashboard_router
 from backend.master_data_routers import master_data_router
 from backend.database import Base, engine
 
@@ -76,6 +77,7 @@ app.include_router(mou_router)
 app.include_router(master_data_router)
 app.include_router(auth_router)
 app.include_router(general_router)
+app.include_router(dashboard_router)
 
 
 @app.get("/")

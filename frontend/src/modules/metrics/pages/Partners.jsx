@@ -68,23 +68,30 @@ const Partners = () => {
         setLoading(true);
         try {
             const params = { skip: 0, limit: 1000 };
-            if (activeTab) params.status = activeTab;
+            if (activeTab) {
+                params.status = activeTab;
+            } else if (!isAdmin) {
+                // Non-admins only ever see Active universities
+                params.status = 'Active';
+            }
             const data = await getPartnerUniversities(params);
             setUniversities(data);
 
-            // Keep pending badge count always accurate (fetch separately if not already showing all)
-            if (activeTab !== null) {
-                const all = await getPartnerUniversities({ skip: 0, limit: 1000 });
-                setPendingCount(all.filter((u) => u.status === 'PENDING_REVIEW').length);
-            } else {
-                setPendingCount(data.filter((u) => u.status === 'PENDING_REVIEW').length);
+            // Keep pending badge count always accurate (admin only)
+            if (isAdmin) {
+                if (activeTab !== null) {
+                    const all = await getPartnerUniversities({ skip: 0, limit: 1000 });
+                    setPendingCount(all.filter((u) => u.status === 'PENDING_REVIEW').length);
+                } else {
+                    setPendingCount(data.filter((u) => u.status === 'PENDING_REVIEW').length);
+                }
             }
         } catch {
             setNotification({ message: 'Failed to fetch partner universities', type: 'error' });
         } finally {
             setLoading(false);
         }
-    }, [activeTab]);
+    }, [activeTab, isAdmin]);
 
     useEffect(() => { fetchUniversities(); }, [fetchUniversities]);
 

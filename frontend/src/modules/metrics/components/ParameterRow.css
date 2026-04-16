@@ -539,6 +539,10 @@
     font-size: 0.82rem;
     color: #94a3b8;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
 }
 
 .multi-uni-option {
@@ -657,6 +661,14 @@
     background: #dbeafe;
     border-color: #93c5fd;
 }
+
+.multi-uni-suggest-btn--inline {
+    margin: 6px auto 0;
+    padding: 5px 12px;
+    font-size: 0.74rem;
+    border-style: dashed;
+}
+
 
 /* ─── RowCard body wrapper ───────────────────────────────────── */
 

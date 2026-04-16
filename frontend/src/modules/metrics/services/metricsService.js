@@ -47,6 +47,25 @@ apiClient.interceptors.response.use(
   }
 );
 
+// ─── Dashboard Summary API ───────────────────────────────────────────────────
+
+export const getDashboardSummary = async (filters = {}) => {
+  try {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== '' && value !== null && value !== undefined) {
+        params.append(key, value);
+      }
+    });
+    const queryString = params.toString();
+    const url = queryString ? `/dashboard/summary?${queryString}` : '/dashboard/summary';
+    const response = await apiClient.get(url);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
 // ─── Partner University APIs ─────────────────────────────────────────────────
 
 export const getPartnerUniversities = async (params = {}) => {
@@ -94,8 +113,8 @@ export const suggestPartnerUniversity = async (data) => {
     const formData = new FormData();
     formData.append('university_name', data.university_name);
     formData.append('university_code', data.university_code);
-    if (data.country)  formData.append('country', data.country);
-    if (data.website)  formData.append('website', data.website);
+    if (data.country) formData.append('country', data.country);
+    if (data.website) formData.append('website', data.website);
     formData.append('has_mou_at_submission', data.has_mou_at_submission ? 'true' : 'false');
     if (data.document instanceof File) formData.append('document', data.document);
     const response = await apiClient.post('/partner-university/suggest', formData, {
@@ -376,14 +395,18 @@ export const getDraftActivities = async (filters = {}) => {
 
 /**
  * Download an activity document with auth via header, returns a temporary Blob URL.
- * Use: const url = await downloadActivityDocument(id);  window.open(url, '_blank');
+ * Pass rowIndex, docType, fileIndex to target a specific file upload.
+ * Use: const url = await downloadActivityDocument(id, 0, 'report', 0);  window.open(url, '_blank');
  */
-export const downloadActivityDocument = async (id) => {
+export const downloadActivityDocument = async (id, rowIndex, docType, fileIndex) => {
   try {
-    const response = await apiClient.get(
-      `/collaboration-activity/${id}/document`,
-      { responseType: 'blob' }
-    );
+    const params = new URLSearchParams();
+    if (rowIndex !== undefined && rowIndex !== null) params.append('row_index', rowIndex);
+    if (docType !== undefined && docType !== null) params.append('doc_type', docType);
+    if (fileIndex !== undefined && fileIndex !== null) params.append('file_index', fileIndex);
+    const query = params.toString();
+    const url = `/collaboration-activity/${id}/document${query ? `?${query}` : ''}`;
+    const response = await apiClient.get(url, { responseType: 'blob' });
     return URL.createObjectURL(response.data);
   } catch (error) {
     throw error.response?.data || error.message;
@@ -553,7 +576,8 @@ export const getParameters = async () => {
 
 export const getPartnerUniversitiesList = async () => {
   try {
-    const response = await apiClient.post('/partner-university/query', { skip: 0, limit: 1000 });
+    // Strictly Active — PENDING_REVIEW universities must not appear in dropdowns
+    const response = await apiClient.post('/partner-university/query', { status: 'Active', skip: 0, limit: 1000 });
     return response.data;
   } catch (error) {
     console.warn('Failed to fetch universities');

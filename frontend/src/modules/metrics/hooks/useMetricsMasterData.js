@@ -43,7 +43,9 @@ const useMetricsMasterData = () => {
                     getCampuses().catch(() => []),
                     getDepartments().catch(() => []),
                     getParameters().catch(() => []),
-                    getPartnerUniversities().catch(() => []),
+                    // Only Active universities appear in dropdowns during data entry.
+                    // PENDING_REVIEW universities are excluded until MOU is formalised.
+                    getPartnerUniversities({ status: 'Active', skip: 0, limit: 1000 }).catch(() => []),
                     getCampusDeptMappings().catch(() => []),
                 ]);
 
@@ -85,7 +87,7 @@ const useMetricsMasterData = () => {
                 getCampuses().catch(() => []),
                 getDepartments().catch(() => []),
                 getParameters().catch(() => []),
-                getPartnerUniversities().catch(() => []),
+                getPartnerUniversities({ status: 'Active', skip: 0, limit: 1000 }).catch(() => []),
                 getCampusDeptMappings().catch(() => []),
             ]);
 
