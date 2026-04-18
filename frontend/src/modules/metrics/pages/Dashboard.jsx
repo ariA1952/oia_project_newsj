@@ -47,7 +47,8 @@ const Dashboard = () => {
     const { masterData, loading: masterDataLoading } = useMetricsMasterData();
     const [filters, setFilters] = useState({
         academic_year_id: '',
-        quarter_id: '',
+        start_date: '',
+        end_date: '',
         campus_id: '',
         department_id: '',
         university_id: '',

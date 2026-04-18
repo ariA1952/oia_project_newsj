@@ -106,7 +106,7 @@ export const updatePartnerUniversity = async (id, data) => {
 
 /**
  * Faculty or Admin suggests a new partner university.
- * @param {Object} data - { university_name, university_code, country, website, has_mou_at_submission, document (File) }
+ * @param {Object} data - { university_name, university_code, country, website }
  */
 export const suggestPartnerUniversity = async (data) => {
   try {
@@ -115,8 +115,6 @@ export const suggestPartnerUniversity = async (data) => {
     formData.append('university_code', data.university_code);
     if (data.country) formData.append('country', data.country);
     if (data.website) formData.append('website', data.website);
-    formData.append('has_mou_at_submission', data.has_mou_at_submission ? 'true' : 'false');
-    if (data.document instanceof File) formData.append('document', data.document);
     const response = await apiClient.post('/partner-university/suggest', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
@@ -126,7 +124,7 @@ export const suggestPartnerUniversity = async (data) => {
   }
 };
 
-/** Admin approves a PENDING_REVIEW university (auto-creates MOU if applicable). */
+/** Admin approves a PENDING_REVIEW university. */
 export const approvePartnerUniversity = async (id) => {
   try {
     const response = await apiClient.patch(`/partner-university/${id}/approve`);
@@ -156,17 +154,7 @@ export const deletePartnerUniversity = async (id) => {
   }
 };
 
-/** Download the agreement/MOU document attached to a university suggestion. */
-export const downloadUniversityAgreementDocument = async (id) => {
-  try {
-    const response = await apiClient.get(`/partner-university/${id}/agreement-document`, {
-      responseType: 'blob',
-    });
-    return URL.createObjectURL(response.data);
-  } catch (error) {
-    throw error.response?.data || error.message;
-  }
-};
+
 
 // ─── Collaboration Activity APIs ─────────────────────────────────────────────
 
@@ -376,6 +364,20 @@ export const deleteCollaborationActivity = async (id) => {
   }
 };
 
+/**
+ * Checks if a duplicate activity exists with overlapping dates for a given parameter and university.
+ */
+export const checkDuplicateActivity = async (parameter_id, university_id, start_date, end_date, activity_id = null) => {
+  try {
+    const params = { parameter_id, university_id, start_date, end_date };
+    if (activity_id) params.activity_id = activity_id;
+    const response = await apiClient.get('/collaboration-activity/check-duplicate', { params });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
 export const getDraftActivities = async (filters = {}) => {
   try {
     // Strip empty string values, then force status filter
@@ -521,15 +523,7 @@ export const getAcademicYears = async () => {
   }
 };
 
-export const getQuarters = async (academicYearId) => {
-  try {
-    const response = await apiClient.post('/quarters', { academic_year_id: academicYearId });
-    return response.data;
-  } catch (error) {
-    console.warn('Quarters endpoint failed');
-    return [];
-  }
-};
+
 
 export const getCampuses = async () => {
   try {

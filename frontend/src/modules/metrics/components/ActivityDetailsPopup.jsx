@@ -39,35 +39,14 @@ const Section = ({ title, icon: Icon, children, accent }) => (
 
 // ─── Document row ─────────────────────────────────────────────────────────────
 
-const DocItem = ({ label, paths, onViewDoc, activityId, rowIndex, dk, hasFallbackDoc }) => {
+const DocItem = ({ label, paths, onViewDoc, activityId, rowIndex, dk }) => {
     const hasPaths = Array.isArray(paths) && paths.length > 0;
-    if (!hasFallbackDoc && !hasPaths) {
+    if (!hasPaths) {
         return (
             <div className="adp-doc-item adp-doc-item--empty">
                 <FileText size={13} className="adp-doc-item__icon" />
                 <span className="adp-doc-item__label">{label}</span>
                 <span className="adp-doc-item__none">No file uploaded</span>
-            </div>
-        );
-    }
-
-    if (hasFallbackDoc && !hasPaths) {
-        // Fallback: single button with no specific index (uses backend fallback)
-        return (
-            <div className="adp-doc-item">
-                <FileText size={13} className="adp-doc-item__icon" />
-                <span className="adp-doc-item__label">{label}</span>
-                <div className="adp-doc-item__actions">
-                    <button
-                        type="button"
-                        onClick={() => onViewDoc(activityId)}
-                        className="adp-doc-btn"
-                        title="Download Document"
-                    >
-                        <Download size={11} style={{ marginRight: 4 }} />
-                        Download
-                    </button>
-                </div>
             </div>
         );
     }
@@ -165,45 +144,26 @@ const ActivityRows = ({ activity, config, universities, onViewDoc }) => {
                         })}
 
                         {/* Document slots */}
-                        {(docSlots.length > 0 || (row.partner_universities ?? []).some(id => {
-                            const u = universities.find(uni => String(uni.university_id) === String(id));
-                            return u && u.agreement_doc_path;
-                        })) && (
-                                <div className="adp-row-docs">
-                                    <div className="adp-row-docs__label">Documents</div>
-                                    {docSlots.length > 0 ? docSlots.map((slot) => {
-                                        const dk = docKey(slot);
-                                        const paths = existingDocs[dk];
-                                        const hasFallbackDoc = (row.partner_universities ?? []).some(id => {
-                                            const u = universities.find(uni => String(uni.university_id) === String(id));
-                                            return u && u.agreement_doc_path;
-                                        });
-                                        return (
-                                            <DocItem
-                                                key={slot}
-                                                label={slot}
-                                                paths={paths}
-                                                onViewDoc={onViewDoc}
-                                                activityId={activity.activity_id}
-                                                rowIndex={ri}
-                                                dk={dk}
-                                                hasFallbackDoc={hasFallbackDoc}
-                                            />
-                                        );
-                                    }) : (
+                        {docSlots.length > 0 && (
+                            <div className="adp-row-docs">
+                                <div className="adp-row-docs__label">Documents</div>
+                                {docSlots.map((slot) => {
+                                    const dk = docKey(slot);
+                                    const paths = existingDocs[dk];
+                                    return (
                                         <DocItem
-                                            key="fallback"
-                                            label="Supporting MOU Document"
-                                            paths={[]}
+                                            key={slot}
+                                            label={slot}
+                                            paths={paths}
                                             onViewDoc={onViewDoc}
                                             activityId={activity.activity_id}
                                             rowIndex={ri}
-                                            dk={null}
-                                            hasFallbackDoc={true}
+                                            dk={dk}
                                         />
-                                    )}
-                                </div>
-                            )}
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 );
             })}
@@ -294,7 +254,6 @@ const ActivityDetailsPopup = memo(({
                             </>
                         )}
                         <Field label="Academic Year" value={activity.erp_academic_year_id ? `Year #${activity.erp_academic_year_id}` : null} icon={Calendar} />
-                        <Field label="Quarter" value={activity.quarter_id ? `Q${activity.quarter_id}` : null} />
                         <Field label="Parameter" value={`#${activity.parameter_id}`} icon={BookOpen} />
                     </Section>
 

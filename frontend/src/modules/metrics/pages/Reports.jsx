@@ -3,6 +3,7 @@ import FilterBar from '../components/FilterBar';
 import HeatMap from '../components/HeatMap';
 import DepartmentPieChart from '../components/DepartmentPieChart';
 import ParameterBarChart from '../components/ParameterBarChart';
+import MonthlyTrendChart from '../components/MonthlyTrendChart';
 import ActionButton from '../../../common/ActionButton';
 import Loader from '../../../common/Loader';
 import Notification from '../../../common/Notification';
@@ -19,7 +20,8 @@ const Reports = () => {
     const { masterData, loading: masterDataLoading } = useMetricsMasterData();
     const [filters, setFilters] = useState({
         academic_year_id: '',
-        quarter_id: '',
+        start_date: '',
+        end_date: '',
         campus_id: '',
         department_id: '',
         parameter_id: '',
@@ -66,7 +68,8 @@ const Reports = () => {
         try {
             const base = {
                 academic_year_id: filters.academic_year_id || undefined,
-                quarter_id:       filters.quarter_id       || undefined,
+                start_date:       filters.start_date       || undefined,
+                end_date:         filters.end_date         || undefined,
                 campus_id:        filters.campus_id        || undefined,
                 department_id:    filters.department_id    || undefined,
                 parameter_id:     filters.parameter_id     || undefined,
@@ -153,7 +156,8 @@ const Reports = () => {
     // ── Extra filters beyond academic year ─────────────────────────────────────
     const hasExtraFilters = !!(
         filters.academic_year_id ||
-        filters.quarter_id       ||
+        filters.start_date       ||
+        filters.end_date         ||
         filters.campus_id        ||
         filters.department_id    ||
         filters.parameter_id     ||
@@ -278,6 +282,11 @@ const Reports = () => {
                             <div className="reports__section">
                                 <h3 className="reports__section-title">Parameter Distribution</h3>
                                 <DepartmentPieChart data={reportData.pieChartData} title={pieChartTitle} />
+                            </div>
+
+                            {/* Monthly Trend Chart */}
+                            <div className="reports__section">
+                                <MonthlyTrendChart activities={activities} />
                             </div>
 
                             {/* Heat map */}

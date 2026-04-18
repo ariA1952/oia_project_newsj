@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import ActionButton from '../../../common/ActionButton';
 import { useAuth } from '../../../common/AuthContext';
-import { downloadActivityDocument } from '../services/metricsService';
+import { downloadActivityDocument, checkDuplicateActivity } from '../services/metricsService';
 import SuggestUniversityModal from './SuggestUniversityModal';
 import {
     getParamConfig,
@@ -532,6 +532,66 @@ const ParameterRow = ({
         rowsFromActivityData(existingData?.activity_data, config)
     );
     const [errors, setErrors] = useState([]);
+    const [duplicateWarnings, setDuplicateWarnings] = useState([]);
+
+    // Debounced check for duplicates
+    useEffect(() => {
+        if (isHOD || isAdminLocked || !parameter?.parameter_id) {
+            setDuplicateWarnings([]);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            const seenActivityIds = new Set();
+            const activityId = existingData?.activity_id || null;
+
+            // Collect all valid API calls to run concurrently
+            const promises = [];
+
+            for (const row of rows) {
+                const unis = row.partner_universities ?? [];
+                const sd = row.start_date;
+                const ed = row.end_date;
+
+                if (unis.length > 0 && sd && ed && sd <= ed) {
+                    for (const uid of unis) {
+                        promises.push(
+                            checkDuplicateActivity(parameter.parameter_id, uid, sd, ed, activityId)
+                                .then(res => ({ res, uid }))
+                                .catch(() => ({ res: null, uid }))
+                        );
+                    }
+                }
+            }
+
+            if (promises.length === 0) {
+                setDuplicateWarnings([]);
+                return;
+            }
+
+            const results = await Promise.all(promises);
+            const warnings = [];
+
+            results.forEach(({ res, uid }) => {
+                if (res?.is_duplicate) {
+                    res.matches.forEach(m => {
+                        if (!seenActivityIds.has(m.activity_id)) {
+                            seenActivityIds.add(m.activity_id);
+                            const uniObj = universities.find(u => String(u.university_id) === String(uid));
+                            warnings.push({
+                                ...m,
+                                uniName: uniObj?.university_name || `University #${uid}`
+                            });
+                        }
+                    });
+                }
+            });
+
+            setDuplicateWarnings(warnings.slice(0, 5));
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [rows, parameter?.parameter_id, isEditing, isHOD, isAdminLocked, existingData?.activity_id, universities]);
 
     // Sync state when existingData or config changes
     useEffect(() => {
@@ -553,7 +613,7 @@ const ParameterRow = ({
     // Validation
     const validate = () => {
         const errs = [];
-        
+
         if (!activityTitle || !activityTitle.trim()) {
             errs.push('Activity Title is required');
         }
@@ -666,6 +726,23 @@ const ParameterRow = ({
                             disabled={!isEditing || !isEditable || disabled}
                         />
                     </div>
+
+                    {/* Duplicate warnings non-blocking alert */}
+                    {duplicateWarnings.length > 0 && (
+                        <div className="param-admin-lock" style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', marginBottom: 15, alignItems: 'flex-start' }}>
+                            <AlertCircle size={16} style={{ marginTop: 2, flexShrink: 0 }} />
+                            <div>
+                                <strong style={{ display: 'block', marginBottom: 4 }}>⚠️ Similar activities found:</strong>
+                                <ul style={{ margin: 0, paddingLeft: 20, fontSize: '0.85rem' }}>
+                                    {duplicateWarnings.map(w => (
+                                        <li key={w.activity_id}>
+                                            {w.title} — {w.uniName} ({w.start_date} → {w.end_date})
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Row cards */}
                     <div className="parameter-row__rows">

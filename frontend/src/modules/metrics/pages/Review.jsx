@@ -132,23 +132,17 @@ const RowDetailPanel = memo(({ activity, config, universities, onViewDoc }) => {
                     <RowFieldSummary row={row} config={config} universities={universities} />
 
                     {/* Per-row document downloads */}
-                    {(
-                        Object.entries(row.documents ?? {}).some(([, v]) => Array.isArray(v) && v.length > 0) ||
-                        (row.partner_universities ?? []).some(id => {
-                            const u = universities.find(uni => String(uni.university_id) === String(id));
-                            return u && u.agreement_doc_path;
-                        })
-                    ) && (
-                            <div className="rv-row-docs" style={{ marginTop: 4 }}>
-                                <button
-                                    type="button"
-                                    className="rv-doc-btn"
-                                    onClick={() => onViewDoc(activity.activity_id)}
-                                >
-                                    <Download size={11} /> Download Documents
-                                </button>
-                            </div>
-                        )}
+                    {Object.entries(row.documents ?? {}).some(([, v]) => Array.isArray(v) && v.length > 0) && (
+                        <div className="rv-row-docs" style={{ marginTop: 4 }}>
+                            <button
+                                type="button"
+                                className="rv-doc-btn"
+                                onClick={() => onViewDoc(activity.activity_id)}
+                            >
+                                <Download size={11} /> Download Documents
+                            </button>
+                        </div>
+                    )}
                 </div>
             ))}
         </div>

@@ -25,22 +25,41 @@ const FilterBar = ({ filters, onChange, masterData, loading }) => {
             </div>
 
             <div className="filter-bar__group">
-                <label className="filter-bar__label">Quarter</label>
-                <select
+                <label className="filter-bar__label">From Month</label>
+                <input
+                    type="month"
                     className="filter-bar__select"
-                    value={filters.quarter_id || ''}
-                    onChange={(e) => handleChange('quarter_id', e.target.value)}
+                    value={filters.start_date ? filters.start_date.substring(0, 7) : ''}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val) {
+                            handleChange('start_date', '');
+                        } else {
+                            handleChange('start_date', `${val}-01`);
+                        }
+                    }}
                     disabled={loading}
-                >
-                    <option value="">All Quarters</option>
-                    {masterData.quarters
-                        .filter(quarter => !filters.academic_year_id || String(quarter.erp_academic_year_id) === String(filters.academic_year_id))
-                        .map((quarter) => (
-                            <option key={quarter.quarter_id} value={quarter.quarter_id}>
-                                Q{quarter.quarter_number}
-                            </option>
-                        ))}
-                </select>
+                />
+            </div>
+
+            <div className="filter-bar__group">
+                <label className="filter-bar__label">To Month</label>
+                <input
+                    type="month"
+                    className="filter-bar__select"
+                    value={filters.end_date ? filters.end_date.substring(0, 7) : ''}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val) {
+                            handleChange('end_date', '');
+                        } else {
+                            const [year, month] = val.split('-');
+                            const lastDay = new Date(year, month, 0).getDate();
+                            handleChange('end_date', `${val}-${lastDay}`);
+                        }
+                    }}
+                    disabled={loading}
+                />
             </div>
 
             <div className="filter-bar__group">

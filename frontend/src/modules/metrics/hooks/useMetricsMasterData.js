@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
     getAcademicYears,
-    getQuarters,
     getCampuses,
     getDepartments,
     getParameters,
@@ -12,7 +11,6 @@ import {
 const useMetricsMasterData = () => {
     const [masterData, setMasterData] = useState({
         academicYears: [],
-        quarters: [],
         campuses: [],
         departments: [],
         parameters: [],
@@ -31,7 +29,6 @@ const useMetricsMasterData = () => {
             try {
                 const [
                     academicYears,
-                    quarters,
                     campuses,
                     departments,
                     parameters,
@@ -39,7 +36,6 @@ const useMetricsMasterData = () => {
                     mappings,
                 ] = await Promise.all([
                     getAcademicYears().catch(() => []),
-                    getQuarters().catch(() => []),
                     getCampuses().catch(() => []),
                     getDepartments().catch(() => []),
                     getParameters().catch(() => []),
@@ -51,7 +47,6 @@ const useMetricsMasterData = () => {
 
                 setMasterData({
                     academicYears,
-                    quarters,
                     campuses,
                     departments,
                     parameters,
@@ -75,7 +70,6 @@ const useMetricsMasterData = () => {
         try {
             const [
                 academicYears,
-                quarters,
                 campuses,
                 departments,
                 parameters,
@@ -83,7 +77,6 @@ const useMetricsMasterData = () => {
                 mappings,
             ] = await Promise.all([
                 getAcademicYears().catch(() => []),
-                getQuarters().catch(() => []),
                 getCampuses().catch(() => []),
                 getDepartments().catch(() => []),
                 getParameters().catch(() => []),
@@ -93,7 +86,6 @@ const useMetricsMasterData = () => {
 
             setMasterData({
                 academicYears,
-                quarters,
                 campuses,
                 departments,
                 parameters,

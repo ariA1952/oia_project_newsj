@@ -10,7 +10,6 @@ import {
     updatePartnerUniversity,
     approvePartnerUniversity,
     rejectPartnerUniversity,
-    downloadUniversityAgreementDocument,
     deletePartnerUniversity,
 } from '../services/metricsService';
 import './Partners.css';
@@ -101,11 +100,8 @@ const Partners = () => {
         setActionLoading(uni.university_id);
         try {
             const updated = await approvePartnerUniversity(uni.university_id);
-            const mouNote = uni.has_mou_at_submission
-                ? ' MOU record has been auto-created.'
-                : '';
             setNotification({
-                message: `${uni.university_name} approved successfully.${mouNote}`,
+                message: `${uni.university_name} approved successfully.`,
                 type: 'success',
             });
             fetchUniversities();
@@ -130,17 +126,7 @@ const Partners = () => {
         }
     };
 
-    const handleViewDoc = async (uni) => {
-        setActionLoading(uni.university_id);
-        try {
-            const url = await downloadUniversityAgreementDocument(uni.university_id);
-            window.open(url, '_blank');
-        } catch {
-            setNotification({ message: 'Document not found or unavailable.', type: 'error' });
-        } finally {
-            setActionLoading(null);
-        }
-    };
+
 
     const handleDelete = async (uni) => {
         if (!window.confirm(`Are you sure you want to delete "${uni.university_name}"? This cannot be undone.`)) return;
@@ -321,12 +307,6 @@ const Partners = () => {
                                     <div className="partners__col-name">
                                         <div className="partners__uni-name">{uni.university_name}</div>
                                         <div className="partners__uni-code">{uni.university_code}</div>
-                                        {isPending && uni.has_mou_at_submission && (
-                                            <span className="partners__mou-flag partners__mou-flag--yes">MOU Attached</span>
-                                        )}
-                                        {isPending && !uni.has_mou_at_submission && (
-                                            <span className="partners__mou-flag partners__mou-flag--no">Agreement Doc</span>
-                                        )}
                                     </div>
 
                                     {/* Location */}
@@ -373,18 +353,6 @@ const Partners = () => {
                                         <div className="partners__col-actions">
                                             {isPending ? (
                                                 <div className="partners__pending-actions">
-                                                    {/* View Document */}
-                                                    {uni.agreement_doc_path && (
-                                                        <button
-                                                            className="partners__action-btn partners__action-btn--doc"
-                                                            onClick={() => handleViewDoc(uni)}
-                                                            disabled={isActing}
-                                                            title="View uploaded document"
-                                                        >
-                                                            <FileDown size={13} />
-                                                            {uni.has_mou_at_submission ? 'View MOU' : 'View Doc'}
-                                                        </button>
-                                                    )}
                                                     {/* Approve */}
                                                     <button
                                                         className="partners__action-btn partners__action-btn--approve"

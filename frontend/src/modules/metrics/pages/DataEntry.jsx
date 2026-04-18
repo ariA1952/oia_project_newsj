@@ -27,7 +27,6 @@ const DataEntry = () => {
     const { profile, loading: profileLoading } = useUserProfile();
     const [context, setContext] = useState({
         academic_year_id: searchParams.get('ay_id') || '',
-        quarter_id: searchParams.get('q_id') || '',
         campus_id: searchParams.get('c_id') || '',
         department_id: searchParams.get('d_id') || '',
     });
@@ -60,10 +59,10 @@ const DataEntry = () => {
         if (paramId && paramId !== selectedParameterId) {
             setSelectedParameterId(paramId);
         }
-    }, [mappingId, context.academic_year_id, context.quarter_id, context.campus_id, context.department_id]);
+    }, [mappingId, context.academic_year_id, context.campus_id, context.department_id]);
 
     const fetchExistingActivities = async () => {
-        if (!context.academic_year_id || !context.quarter_id) {
+        if (!context.academic_year_id) {
             setExistingActivities({});
             return;
         }
@@ -71,7 +70,6 @@ const DataEntry = () => {
         try {
             const data = await getCollaborationActivities({
                 academic_year_id: context.academic_year_id,
-                quarter_id: context.quarter_id,
                 erp_campus_department_mapping_id: mappingId || undefined,
                 campus_id: context.campus_id || undefined,
                 department_id: context.department_id || undefined,
@@ -112,9 +110,7 @@ const DataEntry = () => {
             activity_data: activityData.activity_data || undefined,
             rowFiles: activityData.rowFiles || [],
             campus_id: context.campus_id ? parseInt(context.campus_id) : undefined,
-            department_id: context.department_id ? parseInt(context.department_id) : undefined,
             erp_academic_year_id: parseInt(context.academic_year_id),
-            quarter_id: parseInt(context.quarter_id),
         };
 
         try {
@@ -183,7 +179,7 @@ const DataEntry = () => {
     const validateContext = () => {
         if (!isContextSelected) {
             setNotification({
-                message: 'Please select Academic Year and Quarter to proceed.',
+                message: 'Please select Academic Year to proceed.',
                 type: 'warning',
             });
             return false;
@@ -192,7 +188,7 @@ const DataEntry = () => {
     };
 
     const isContextSelected =
-        context.academic_year_id && context.quarter_id && (mappingId || (context.campus_id && context.department_id));
+        context.academic_year_id && (mappingId || (context.campus_id && context.department_id));
 
     if (masterDataLoading) {
         return <Loader fullscreen />;
@@ -251,21 +247,7 @@ const DataEntry = () => {
                         </select>
                     </div>
 
-                    <div className="data-entry__field">
-                        <label className="data-entry__label">Quarter *</label>
-                        <select
-                            className="data-entry__select"
-                            value={context.quarter_id}
-                            onChange={(e) => handleContextChange('quarter_id', e.target.value)}
-                        >
-                            <option value="">Select Quarter</option>
-                            {masterData.quarters.map((quarter) => (
-                                <option key={quarter.quarter_id} value={quarter.quarter_id}>
-                                    Q{quarter.quarter_number}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+
 
                     {!mappingId && (
                         <>
