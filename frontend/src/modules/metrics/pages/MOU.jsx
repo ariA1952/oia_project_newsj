@@ -88,8 +88,8 @@ const MOU = () => {
         }
     };
 
-    const getUniversityName = (id) =>
-        masterData.universities.find(u => u.university_id === id)?.university_name || `University #${id}`;
+    const getUniversityName = (mou) =>
+        mou.university_name || masterData.universities.find(u => u.university_id === mou.university_id)?.university_name || `University #${mou.university_id}`;
 
     const getAcademicYearName = (id) =>
         masterData.academicYears.find(y => y.erp_academic_year_id === id)?.academic_year_name ||
@@ -152,7 +152,7 @@ const MOU = () => {
     };
 
     const filteredMOUs = mous.filter(mou => {
-        const uniName = getUniversityName(mou.university_id).toLowerCase();
+        const uniName = getUniversityName(mou).toLowerCase();
         const mouType = (mou.mou_type || '').toLowerCase();
         const term = searchTerm.toLowerCase();
         return uniName.includes(term) || mouType.includes(term);
@@ -229,7 +229,7 @@ const MOU = () => {
                                     <div className="mou__col">
                                         <div className="mou__uni-name">
                                             <Building2 size={14} style={{ marginRight: 6 }} />
-                                            {getUniversityName(mou.university_id)}
+                                            {getUniversityName(mou)}
                                         </div>
                                         <div className="mou__mou-id">MOU #{mou.mou_id}</div>
                                     </div>
@@ -329,9 +329,14 @@ const MOU = () => {
                                         onChange={handleInputChange}
                                     >
                                         <option value="">Select University</option>
+                                        {editingMOU && editingMOU.university_id && !masterData.universities.some(u => u.university_id === editingMOU.university_id) && (
+                                            <option value={editingMOU.university_id}>
+                                                {getUniversityName(editingMOU)}
+                                            </option>
+                                        )}
                                         {masterData.universities.map(u => (
                                             <option key={u.university_id} value={u.university_id}>
-                                                {u.university_name} ({u.country})
+                                                {u.university_name} {u.country ? `(${u.country})` : ''}
                                             </option>
                                         ))}
                                     </select>

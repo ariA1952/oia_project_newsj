@@ -98,13 +98,39 @@ const RowFieldSummary = memo(({ row, config, universities }) => {
                 );
             })}
 
+            {/* Extra fields not in config */}
+            {Object.entries(row.fields ?? {}).map(([key, val]) => {
+                if ((config?.fields ?? []).some((f) => f.id === key)) return null;
+                if (!val && val !== 0 && val !== false) return null;
+                return (
+                    <div key={`extra-${key}`} className="rv-row-field">
+                        <span className="rv-row-field__label" style={{ textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}:</span>
+                        <span>{String(val)}</span>
+                    </div>
+                );
+            })}
+
             {/* Document badges per row */}
             {Object.entries(row.documents ?? {}).some(([, v]) => Array.isArray(v) && v.length > 0) && (
                 <div className="rv-row-docs">
                     {config?.documents
                         .filter((d) => {
-                            const k = docKey(d);
-                            return Array.isArray(row.documents?.[k]) && row.documents[k].length > 0;
+                            const dk = docKey(d);
+                            let paths = row.documents?.[dk];
+                            
+                            if (!paths) {
+                                const fallbackKey = Object.keys(row.documents ?? {}).find(
+                                    (key) => key.includes(dk) || dk.includes(key)
+                                );
+                                if (fallbackKey) paths = row.documents[fallbackKey];
+                            }
+                            
+                            if (!paths) {
+                                const allDocs = Object.values(row.documents ?? {}).flat();
+                                if (allDocs.length > 0) paths = allDocs;
+                            }
+                            
+                            return Array.isArray(paths) && paths.length > 0;
                         })
                         .map((d) => (
                             <span key={d} className="rv-doc-btn" title={d}>
@@ -134,13 +160,40 @@ const RowDetailPanel = memo(({ activity, config, universities, onViewDoc }) => {
                     {/* Per-row document downloads */}
                     {Object.entries(row.documents ?? {}).some(([, v]) => Array.isArray(v) && v.length > 0) && (
                         <div className="rv-row-docs" style={{ marginTop: 4 }}>
-                            <button
-                                type="button"
-                                className="rv-doc-btn"
-                                onClick={() => onViewDoc(activity.activity_id)}
-                            >
-                                <Download size={11} /> Download Documents
-                            </button>
+                            {config?.documents?.map(docName => {
+                                const dk = docKey(docName);
+
+                                // 1. Exact match
+                                let paths = row.documents?.[dk];
+
+                                // 2. Substring fallback
+                                if (!paths) {
+                                    const fallbackKey = Object.keys(row.documents ?? {}).find(
+                                        (key) => key.includes(dk) || dk.includes(key)
+                                    );
+                                    if (fallbackKey) paths = row.documents[fallbackKey];
+                                }
+
+                                // 3. Last-resort: all docs
+                                if (!paths) {
+                                    const allDocs = Object.values(row.documents ?? {}).flat();
+                                    if (allDocs.length > 0) paths = allDocs;
+                                }
+
+                                const resolvedPaths = paths || [];
+                                return resolvedPaths.map((_, fi) => (
+                                    <button
+                                        key={`${dk}-${fi}`}
+                                        type="button"
+                                        className="rv-doc-btn"
+                                        onClick={() => onViewDoc(activity.activity_id, ri, dk, fi)}
+                                        title={`Download ${docName}`}
+                                    >
+                                        <Download size={11} style={{ marginRight: 4 }} /> 
+                                        {docName} {resolvedPaths.length > 1 ? `(${fi + 1})` : ''}
+                                    </button>
+                                ));
+                            })}
                         </div>
                     )}
                 </div>
@@ -499,7 +552,14 @@ const Review = () => {
 
     const viewDoc = async (id, rowIndex, docType, fileIndex) => {
         try {
-            window.open(await downloadActivityDocument(id, rowIndex, docType, fileIndex), '_blank');
+            const url = await downloadActivityDocument(id, rowIndex, docType, fileIndex);
+            const a = document.createElement('a');
+            a.href = url;
+            const docLabel = docType ? `_${docType}` : '';
+            a.download = `Activity_Document_${id}${docLabel}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         } catch {
             setNotification({ message: 'Failed to load document', type: 'error' });
         }
@@ -627,6 +687,8 @@ const Review = () => {
     // ═════════════════════════════════════════════════════════════════════════
     // RENDER
     // ═════════════════════════════════════════════════════════════════════════
+    const isHOD = ['HOD', 'COORDINATOR'].includes(userRole);
+
     return (
         <div className="review">
             <div className="review__header">
@@ -645,6 +707,7 @@ const Review = () => {
                 onChange={setFilters}
                 masterData={masterData}
                 loading={loading}
+                hiddenFilters={(isFaculty || isHOD) ? ['campus_id', 'department_id'] : []}
             />
 
             {/* ── Status Tabs (all roles) ─────────────────────────────────── */}

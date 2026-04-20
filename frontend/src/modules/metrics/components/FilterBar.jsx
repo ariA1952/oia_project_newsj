@@ -1,6 +1,6 @@
 import './FilterBar.css';
 
-const FilterBar = ({ filters, onChange, masterData, loading }) => {
+const FilterBar = ({ filters, onChange, masterData, loading, hiddenFilters = [] }) => {
     const handleChange = (key, value) => {
         onChange({ ...filters, [key]: value });
     };
@@ -62,39 +62,43 @@ const FilterBar = ({ filters, onChange, masterData, loading }) => {
                 />
             </div>
 
-            <div className="filter-bar__group">
-                <label className="filter-bar__label">Campus</label>
-                <select
-                    className="filter-bar__select"
-                    value={filters.campus_id || ''}
-                    onChange={(e) => handleChange('campus_id', e.target.value)}
-                    disabled={loading}
-                >
-                    <option value="">All Campuses</option>
-                    {masterData.campuses.map((campus) => (
-                        <option key={campus.erp_campus_id} value={campus.erp_campus_id}>
-                            {campus.campus_name}
-                        </option>
-                    ))}
-                </select>
-            </div>
+            {!hiddenFilters.includes('campus_id') && (
+                <div className="filter-bar__group">
+                    <label className="filter-bar__label">Campus</label>
+                    <select
+                        className="filter-bar__select"
+                        value={filters.campus_id || ''}
+                        onChange={(e) => handleChange('campus_id', e.target.value)}
+                        disabled={loading}
+                    >
+                        <option value="">All Campuses</option>
+                        {masterData.campuses.map((campus) => (
+                            <option key={campus.erp_campus_id} value={campus.erp_campus_id}>
+                                {campus.campus_name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
-            <div className="filter-bar__group">
-                <label className="filter-bar__label">Department</label>
-                <select
-                    className="filter-bar__select"
-                    value={filters.department_id || ''}
-                    onChange={(e) => handleChange('department_id', e.target.value)}
-                    disabled={loading}
-                >
-                    <option value="">All Departments</option>
-                    {masterData.departments.map((dept) => (
-                        <option key={dept.erp_department_id} value={dept.erp_department_id}>
-                            {dept.department_name}
-                        </option>
-                    ))}
-                </select>
-            </div>
+            {!hiddenFilters.includes('department_id') && (
+                <div className="filter-bar__group">
+                    <label className="filter-bar__label">Department</label>
+                    <select
+                        className="filter-bar__select"
+                        value={filters.department_id || ''}
+                        onChange={(e) => handleChange('department_id', e.target.value)}
+                        disabled={loading}
+                    >
+                        <option value="">All Departments</option>
+                        {masterData.departments.map((dept) => (
+                            <option key={dept.erp_department_id} value={dept.erp_department_id}>
+                                {dept.department_name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
             <div className="filter-bar__group">
                 <label className="filter-bar__label">Parameter</label>

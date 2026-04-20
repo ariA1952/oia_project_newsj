@@ -118,6 +118,7 @@ export const PARAMETER_CONFIGS = [
     multiRow: true,
     fields: [
       { id: 'event_name',           label: 'Event / Project Name',            type: 'text', required: true },
+      { id: 'start_date',           label: 'Month of Event',                  type: 'month'     },
       { id: 'sdg_goal',             label: 'SDG Goal',                        type: 'select', required: true,
         options: Array.from({ length: 17 }, (_, i) => `Goal ${i + 1} – SDG ${i + 1}`) },
     ],
@@ -131,6 +132,7 @@ export const PARAMETER_CONFIGS = [
     multiRow: true,
     fields: [
       { id: 'body_name',            label: 'Collaborating Professional Body', type: 'text', required: true },
+      { id: 'start_date',           label: 'Month of Collaboration',          type: 'month'     },
       { id: 'country',              label: 'Country',                         type: 'country'   },
       { id: 'key_achievements',     label: 'Key Achievements',                type: 'textarea'  },
     ],
@@ -210,8 +212,7 @@ export const PARAMETER_CONFIGS = [
       { id: 'christ_authors',       label: 'CHRIST Authors',                  type: 'text'      },
       { id: 'journal_name',         label: 'Journal Name',                    type: 'text'      },
       { id: 'volume_issue',         label: 'Volume & Issue Number',           type: 'text'      },
-      { id: 'pub_month_year',       label: 'Month / Year of Publication',     type: 'text',
-        placeholder: 'e.g. March 2024' },
+      { id: 'start_date',           label: 'Month of Publication',            type: 'month'     },
       { id: 'partner_universities', label: 'Partner Universities / Org.',     type: 'multi-uni' },
     ],
     documents: ['Proof of Publication'],

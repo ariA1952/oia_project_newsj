@@ -354,7 +354,7 @@ const DataEntry = () => {
 
                                         // NEW: For Admin and Faculty, hide APPROVED rows in data entry view
                                         if (['OIA_ADMIN', 'SUPER_ADMIN', 'FACULTY'].includes(user?.erp_users_type)) {
-                                            activities = activities.filter(a => !a || a.status !== 'APPROVED');
+                                            activities = activities.filter(a => !a || (a.status !== 'APPROVED' && a.status !== 'REJECTED'));
                                             // If we filtered everything out, show a blank row to allow new entries
                                             if (activities.length === 0) {
                                                 activities = [null];

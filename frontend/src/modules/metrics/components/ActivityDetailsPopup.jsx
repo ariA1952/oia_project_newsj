@@ -113,6 +113,8 @@ const ActivityRows = ({ activity, config, universities, onViewDoc }) => {
                 });
 
                 const existingDocs = row.existingDocuments ?? row.documents ?? {};
+                // Debug: inspect actual keys stored by the backend
+                console.log('existingDocs:', existingDocs);
 
                 return (
                     <div key={ri} className="adp-row-card">
@@ -149,7 +151,27 @@ const ActivityRows = ({ activity, config, universities, onViewDoc }) => {
                                 <div className="adp-row-docs__label">Documents</div>
                                 {docSlots.map((slot) => {
                                     const dk = docKey(slot);
-                                    const paths = existingDocs[dk];
+
+                                    // 1. Exact match
+                                    let paths = existingDocs[dk];
+
+                                    // 2. Substring fallback (e.g. "report" ↔ "file_0_report")
+                                    if (!paths) {
+                                        const fallbackKey = Object.keys(existingDocs).find(
+                                            (key) => key.includes(dk) || dk.includes(key)
+                                        );
+                                        if (fallbackKey) {
+                                            paths = existingDocs[fallbackKey];
+                                        }
+                                    }
+
+                                    // 3. Last-resort: expose all uploaded docs when nothing matched
+                                    if (!paths) {
+                                        const allDocs = Object.values(existingDocs).flat();
+                                        if (allDocs.length > 0) {
+                                            paths = allDocs;
+                                        }
+                                    }
                                     return (
                                         <DocItem
                                             key={slot}

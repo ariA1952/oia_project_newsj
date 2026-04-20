@@ -238,6 +238,24 @@ const renderField = (field, value, onChange, disabled) => {
                 />
             );
 
+        case 'month':
+            return (
+                <input
+                    {...baseProps}
+                    type="month"
+                    className="parameter-row__input-date"
+                    value={value ? value.substring(0, 7) : ''}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val) {
+                            onChange('');
+                        } else {
+                            onChange(`${val}-01`);
+                        }
+                    }}
+                />
+            );
+
         case 'number':
             return (
                 <input
@@ -296,9 +314,9 @@ const RowCard = ({
 
     // Split fields into groups for layout
     const uniFields = config.fields.filter((f) => f.type === 'multi-uni');
-    const dateFields = config.fields.filter((f) => f.type === 'date');
+    const dateFields = config.fields.filter((f) => f.type === 'date' || f.type === 'month');
     const otherFields = config.fields.filter(
-        (f) => f.type !== 'multi-uni' && f.type !== 'date'
+        (f) => f.type !== 'multi-uni' && f.type !== 'date' && f.type !== 'month'
     );
 
     const updateField = (fieldId, value) => onChange(setRowFieldValue(row, fieldId, value));
@@ -746,6 +764,18 @@ const ParameterRow = ({
 
                     {/* Row cards */}
                     <div className="parameter-row__rows">
+                        {/* Add Row at top */}
+                        {isEditing && isEditable && !disabled && config.multiRow !== false && (
+                            <button
+                                type="button"
+                                className="activity-row-card__add-row"
+                                onClick={addRow}
+                                style={{ marginBottom: '8px' }}
+                            >
+                                <Plus size={14} /> Add another entry
+                            </button>
+                        )}
+
                         {rows.map((row, idx) => (
                             <RowCard
                                 key={row.id}
@@ -760,17 +790,6 @@ const ParameterRow = ({
                                 disabled={disabled}
                             />
                         ))}
-
-                        {/* Add Row */}
-                        {isEditing && isEditable && !disabled && config.multiRow !== false && (
-                            <button
-                                type="button"
-                                className="activity-row-card__add-row"
-                                onClick={addRow}
-                            >
-                                <Plus size={14} /> Add Entry Row
-                            </button>
-                        )}
                     </div>
 
                     {/* Validation errors */}
