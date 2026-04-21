@@ -361,6 +361,13 @@ const DataEntry = () => {
                                             }
                                         }
 
+                                        // Ensure new entries (null) are always at the top
+                                        activities.sort((a, b) => {
+                                            if (a === null && b !== null) return -1;
+                                            if (a !== null && b === null) return 1;
+                                            return 0;
+                                        });
+
                                         return activities.map((activity, index) => (
                                             <div
                                                 key={activity?.activity_id || `new-${parameter.parameter_id}-${index}`}
@@ -377,10 +384,12 @@ const DataEntry = () => {
                                                     autoEdit={!!searchParams.get('edit_p_id')}
                                                     onAdd={() => {
                                                         const freshMapping = { ...existingActivities };
-                                                        if (!freshMapping[parameter.parameter_id]) {
-                                                            freshMapping[parameter.parameter_id] = [null];
+                                                        const pid = String(parameter.parameter_id);
+                                                        if (!freshMapping[pid]) {
+                                                            freshMapping[pid] = [null];
+                                                        } else {
+                                                            freshMapping[pid] = [null, ...freshMapping[pid]];
                                                         }
-                                                        freshMapping[parameter.parameter_id].push(null);
                                                         setExistingActivities(freshMapping);
                                                     }}
                                                     disabled={(!mappingId && !isContextSelected) || (activity?.status && activity?.status !== 'DRAFT' && activity?.status !== 'REJECTED' && activity?.status !== 'CLARIFICATION_REQUESTED')}

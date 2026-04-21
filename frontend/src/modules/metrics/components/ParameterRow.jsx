@@ -715,10 +715,21 @@ const ParameterRow = ({
         <div className={`parameter-row ${disabled && !isEditing ? 'parameter-row--disabled' : ''}`}>
 
             {/* Parameter name + code */}
-            <div className="parameter-row__name">
-                {parameter.parameter_name ?? parameter.parameter_code}
-                {parameter.parameter_code && (
-                    <span className="parameter-row__code">{parameter.parameter_code}</span>
+            <div className="parameter-row__name" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <div>
+                    {parameter.parameter_name ?? parameter.parameter_code}
+                    {parameter.parameter_code && (
+                        <span className="parameter-row__code">{parameter.parameter_code}</span>
+                    )}
+                </div>
+                {isContextSelected && !isHOD && existingData && (
+                    <ActionButton
+                        variant="primary"
+                        onClick={onAdd}
+                        title="Add another entry for this parameter"
+                    >
+                        <Plus size={14} style={{ marginRight: 4 }} /> Add another entry
+                    </ActionButton>
                 )}
             </div>
 
@@ -764,17 +775,7 @@ const ParameterRow = ({
 
                     {/* Row cards */}
                     <div className="parameter-row__rows">
-                        {/* Add Row at top */}
-                        {isEditing && isEditable && !disabled && config.multiRow !== false && (
-                            <button
-                                type="button"
-                                className="activity-row-card__add-row"
-                                onClick={addRow}
-                                style={{ marginBottom: '8px' }}
-                            >
-                                <Plus size={14} /> Add another entry
-                            </button>
-                        )}
+                        {/* Add Row was moved to bottom */}
 
                         {rows.map((row, idx) => (
                             <RowCard
@@ -790,6 +791,18 @@ const ParameterRow = ({
                                 disabled={disabled}
                             />
                         ))}
+
+                        {/* Add Row at bottom */}
+                        {isEditing && isEditable && !disabled && config.multiRow !== false && (
+                            <button
+                                type="button"
+                                className="activity-row-card__add-row"
+                                onClick={addRow}
+                                style={{ marginTop: '8px' }}
+                            >
+                                <Plus size={14} /> Add another entry
+                            </button>
+                        )}
                     </div>
 
                     {/* Validation errors */}
@@ -875,15 +888,7 @@ const ParameterRow = ({
                             </span>
                         )}
                         {isHOD && <span className="action-label">View Only</span>}
-                        {isContextSelected && !isHOD && (
-                            <ActionButton
-                                variant="secondary"
-                                onClick={onAdd}
-                                title="Add another entry for this parameter"
-                            >
-                                +
-                            </ActionButton>
-                        )}
+                        {/* Grey + button moved to parameter header as Blue button */}
                         {isSuperAdmin && existingData && (
                             <ActionButton
                                 variant="danger"
