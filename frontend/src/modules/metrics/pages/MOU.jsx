@@ -46,6 +46,7 @@ const MOU = () => {
     const [loading, setLoading] = useState(false);
     const [notification, setNotification] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('Active');
     const [showModal, setShowModal] = useState(false);
     const [editingMOU, setEditingMOU] = useState(null);
     const [formData, setFormData] = useState(EMPTY_FORM);
@@ -152,10 +153,11 @@ const MOU = () => {
     };
 
     const filteredMOUs = mous.filter(mou => {
+        const matchesStatus = (mou.status || 'Active').toLowerCase() === statusFilter.toLowerCase();
         const uniName = getUniversityName(mou).toLowerCase();
         const mouType = (mou.mou_type || '').toLowerCase();
         const term = searchTerm.toLowerCase();
-        return uniName.includes(term) || mouType.includes(term);
+        return matchesStatus && (uniName.includes(term) || mouType.includes(term));
     });
 
     if (masterDataLoading) return <Loader fullscreen />;
@@ -188,16 +190,57 @@ const MOU = () => {
                 </div>
             )}
 
-            {/* Search */}
-            <div className="mou__search-bar">
-                <Search size={18} className="mou__search-icon" />
-                <input
-                    type="text"
-                    placeholder="Search by university or MOU type..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="mou__search-input"
-                />
+            {/* Controls Row: Search & Toggle */}
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                {/* Status Toggle List */}
+                <div style={{ display: 'flex', backgroundColor: '#e2e8f0', p: '2px', borderRadius: '8px', padding: '4px' }}>
+                    <button
+                        type="button"
+                        onClick={() => setStatusFilter('Active')}
+                        style={{
+                            padding: '6px 16px',
+                            border: 'none',
+                            borderRadius: '6px',
+                            backgroundColor: statusFilter === 'Active' ? '#fff' : 'transparent',
+                            color: statusFilter === 'Active' ? '#1e293b' : '#64748b',
+                            fontWeight: statusFilter === 'Active' ? '600' : '500',
+                            boxShadow: statusFilter === 'Active' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Active MOUs
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setStatusFilter('Inactive')}
+                        style={{
+                            padding: '6px 16px',
+                            border: 'none',
+                            borderRadius: '6px',
+                            backgroundColor: statusFilter === 'Inactive' ? '#fff' : 'transparent',
+                            color: statusFilter === 'Inactive' ? '#1e293b' : '#64748b',
+                            fontWeight: statusFilter === 'Inactive' ? '600' : '500',
+                            boxShadow: statusFilter === 'Inactive' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Inactive MOUs
+                    </button>
+                </div>
+
+                {/* Search */}
+                <div className="mou__search-bar" style={{ marginBottom: 0, flex: 1, maxWidth: '400px' }}>
+                    <Search size={18} className="mou__search-icon" />
+                    <input
+                        type="text"
+                        placeholder="Search by university or MOU type..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="mou__search-input"
+                    />
+                </div>
             </div>
 
             {/* Table */}
