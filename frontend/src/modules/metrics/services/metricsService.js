@@ -368,6 +368,10 @@ export const deleteCollaborationActivity = async (id) => {
  * Checks if a duplicate activity exists with overlapping dates for a given parameter and university.
  */
 export const checkDuplicateActivity = async (parameter_id, university_id, start_date, end_date, activity_id = null) => {
+  if (!parameter_id || !university_id || !start_date || !end_date) {
+    return null;
+  }
+  
   try {
     const params = { parameter_id, university_id, start_date, end_date };
     if (activity_id) params.activity_id = activity_id;

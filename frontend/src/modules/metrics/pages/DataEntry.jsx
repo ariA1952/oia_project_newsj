@@ -8,10 +8,8 @@ import { useAuth } from '../../../common/AuthContext';
 import useMetricsMasterData from '../hooks/useMetricsMasterData';
 import useUserProfile from '../hooks/useUserProfile';
 import { getParamConfig } from '../config/parameterConfigs';
-import {
+import apiClient, {
     getCollaborationActivities,
-    createCollaborationActivity,
-    updateCollaborationActivity,
     submitCollaborationActivity,
     deleteCollaborationActivity,
 } from '../services/metricsService';
@@ -104,27 +102,59 @@ const DataEntry = () => {
     const handleSaveActivity = async (activityData, activityId = null) => {
         if (!validateContext()) return;
 
-        const payload = {
-            parameter_id: activityData.parameter_id,
-            activity_title: activityData.activity_title || undefined,
-            activity_data: activityData.activity_data || undefined,
-            rowFiles: activityData.rowFiles || [],
-            campus_id: context.campus_id ? parseInt(context.campus_id) : undefined,
-            erp_academic_year_id: parseInt(context.academic_year_id),
-        };
+        const formData = new FormData();
+        
+        formData.append('parameter_id', activityData.parameter_id);
+        
+        if (activityData.activity_title) {
+            formData.append('activity_title', activityData.activity_title);
+        }
+        
+        if (activityData.activity_data) {
+            formData.append('activity_data', JSON.stringify(activityData.activity_data));
+        }
+
+        if (context.campus_id) {
+            formData.append('campus_id', parseInt(context.campus_id));
+        }
+        
+        if (context.academic_year_id) {
+            formData.append('erp_academic_year_id', parseInt(context.academic_year_id));
+        }
+
+        if (Array.isArray(activityData.rowFiles)) {
+            activityData.rowFiles.forEach(({ rowIndex, docType, file }) => {
+                if (file) {
+                    formData.append(`file_${rowIndex}_${docType}`, file);
+                }
+            });
+        }
 
         try {
             if (activityId) {
-                await updateCollaborationActivity(activityId, payload);
+                await apiClient.put(`/collaboration-activity/${activityId}`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
                 setNotification({ message: 'Entry updated successfully', type: 'success' });
             } else {
-                await createCollaborationActivity(payload);
+                await apiClient.post('/collaboration-activity', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
                 setNotification({ message: 'Entry created successfully', type: 'success' });
             }
             fetchExistingActivities();
         } catch (error) {
+            let errorMsg = error.detail || 'Failed to save activity';
+            const serverError = error.response?.data?.detail;
+            if (Array.isArray(serverError)) {
+                errorMsg = serverError.map(err => `${err.loc.join('.')}: ${err.msg}`).join(', ');
+            } else if (serverError) {
+                errorMsg = serverError;
+            } else if (error.response?.data?.message) {
+                errorMsg = error.response?.data?.message;
+            }
             setNotification({
-                message: error.detail || 'Failed to save activity',
+                message: errorMsg,
                 type: 'error',
             });
         }

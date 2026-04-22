@@ -552,6 +552,8 @@ const ParameterRow = ({
     const [errors, setErrors] = useState([]);
     const [duplicateWarnings, setDuplicateWarnings] = useState([]);
 
+    const rowsJson = JSON.stringify(rows);
+
     // Debounced check for duplicates
     useEffect(() => {
         if (isHOD || isAdminLocked || !parameter?.parameter_id) {
@@ -573,6 +575,8 @@ const ParameterRow = ({
 
                 if (unis.length > 0 && sd && ed && sd <= ed) {
                     for (const uid of unis) {
+                        if (!parameter.parameter_id || !uid || !sd || !ed) continue;
+
                         promises.push(
                             checkDuplicateActivity(parameter.parameter_id, uid, sd, ed, activityId)
                                 .then(res => ({ res, uid }))
@@ -609,7 +613,8 @@ const ParameterRow = ({
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [rows, parameter?.parameter_id, isEditing, isHOD, isAdminLocked, existingData?.activity_id, universities]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [rowsJson, parameter?.parameter_id, isEditing, isHOD, isAdminLocked, existingData?.activity_id, universities]);
 
     // Sync state when existingData or config changes
     useEffect(() => {
@@ -672,7 +677,9 @@ const ParameterRow = ({
                     start_date: row.start_date || null,
                     end_date: row.end_date || null,
                     fields: row.fields ?? {},
-                    documents: row.existingDocuments ?? {},
+                    ...(row.existingDocuments && Object.keys(row.existingDocuments).length > 0
+                        ? { documents: row.existingDocuments }
+                        : {}),
                 })),
             },
             rowFiles,
