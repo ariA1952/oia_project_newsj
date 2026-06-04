@@ -14,6 +14,9 @@ import {
     downloadMOUDocument,
     deleteMOU,
     updateMOU,
+    downloadMOUOtherDocument,
+    getMOUById,
+    getMOUOtherDocuments,
 } from '../services/metricsService';
 import './MOU.css';
 
@@ -52,6 +55,16 @@ const MOU = () => {
     const [formData, setFormData] = useState(EMPTY_FORM);
     const [formLoading, setFormLoading] = useState(false);
 
+    // Other optional documents state
+    const [otherDocs, setOtherDocs] = useState([]);
+    const [docsLoading, setDocsLoading] = useState(false);
+
+    // Supporting documents popup/lazy-loading states
+    const [showOtherDocsModal, setShowOtherDocsModal] = useState(false);
+    const [selectedMOUForDocs, setSelectedMOUForDocs] = useState(null);
+    const [popupDocs, setPopupDocs] = useState([]);
+    const [popupLoading, setPopupLoading] = useState(false);
+
     // Open MOU document via authenticated fetch → blob URL
     const handleViewMOUDocument = async (mouId) => {
         try {
@@ -60,6 +73,66 @@ const MOU = () => {
         } catch {
             setNotification({ message: 'Failed to load document', type: 'error' });
         }
+    };
+
+    // Open MOU supporting document via authenticated fetch → blob URL
+    const handleViewOtherDocument = async (mouId, fileIndex) => {
+        try {
+            const blobUrl = await downloadMOUOtherDocument(mouId, fileIndex);
+            window.open(blobUrl, '_blank');
+        } catch {
+            setNotification({ message: 'Failed to load supporting document', type: 'error' });
+        }
+    };
+
+    // Direct download MOU supporting document via programmatically clicking a blob link
+    const handleDownloadOtherDocument = async (mouId, fileIndex, filename) => {
+        try {
+            const blobUrl = await downloadMOUOtherDocument(mouId, fileIndex);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.setAttribute('download', filename || 'document');
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+        } catch {
+            setNotification({ message: 'Failed to download supporting document', type: 'error' });
+        }
+    };
+
+    // Handle lazy-loaded popup fetch for supporting documents metadata
+    const handleOpenOtherDocsPopup = async (mou) => {
+        setSelectedMOUForDocs(mou);
+        setShowOtherDocsModal(true);
+        setPopupLoading(true);
+        try {
+            const docs = await getMOUOtherDocuments(mou.mou_id);
+            setPopupDocs(docs || []);
+        } catch (error) {
+            setNotification({ message: 'Failed to load supporting documents details', type: 'error' });
+        } finally {
+            setPopupLoading(false);
+        }
+    };
+
+    const handleAddOtherDoc = () => {
+        setOtherDocs(prev => [
+            ...prev,
+            { id: `temp_${Date.now()}`, title: '', file: null, has_new_file: true }
+        ]);
+    };
+
+    const handleRemoveOtherDoc = (id) => {
+        setOtherDocs(prev => prev.filter(doc => doc.id !== id));
+    };
+
+    const handleOtherDocChange = (id, field, value) => {
+        setOtherDocs(prev => prev.map(doc => {
+            if (doc.id === id) {
+                return { ...doc, [field]: value };
+            }
+            return doc;
+        }));
     };
 
     useEffect(() => {
@@ -97,7 +170,7 @@ const MOU = () => {
         masterData.academicYears.find(y => y.erp_academic_year_id === id)?.academic_year ||
         `Year #${id}`;
 
-    const handleOpenModal = (mou = null) => {
+    const handleOpenModal = async (mou = null) => {
         if (!isAdmin) return;
         if (mou) {
             setEditingMOU(mou);
@@ -110,9 +183,31 @@ const MOU = () => {
                 status: mou.status || 'Active',
                 document: null,
             });
+            setOtherDocs([]);
+            setDocsLoading(true);
+            try {
+                // Fetch full details of the MOU including all uploaded other_documents
+                const fullMOU = await getMOUById(mou.mou_id);
+                const initialDocs = (fullMOU.other_documents || []).map((doc, idx) => ({
+                    id: `existing_${idx}`,
+                    title: doc.title || '',
+                    file_path: doc.file_path || '',
+                    uploaded_by: doc.uploaded_by,
+                    uploaded_at: doc.uploaded_at,
+                    has_new_file: false,
+                    file: null
+                }));
+                setOtherDocs(initialDocs);
+            } catch (err) {
+                setNotification({ message: 'Failed to load supporting documents for editing', type: 'error' });
+            } finally {
+                setDocsLoading(false);
+            }
         } else {
             setEditingMOU(null);
             setFormData(EMPTY_FORM);
+            setOtherDocs([]);
+            setDocsLoading(false);
         }
         setShowModal(true);
     };
@@ -128,14 +223,60 @@ const MOU = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (docsLoading) {
+            setNotification({ message: 'Please wait for supporting documents to load', type: 'warning' });
+            return;
+        }
         if (!formData.university_id || !formData.erp_academic_year_id) {
             setNotification({ message: 'University and Academic Year are required', type: 'warning' });
             return;
         }
 
+        // Validate supporting documents: title requires file, file requires title
+        for (const doc of otherDocs) {
+            const hasTitle = !!doc.title.trim();
+            const hasFile = doc.has_new_file ? !!doc.file : !!doc.file_path;
+
+            if (hasTitle && !hasFile) {
+                setNotification({
+                    message: `Please upload a file for supporting document "${doc.title}"`,
+                    type: 'warning'
+                });
+                return;
+            }
+            if (!hasTitle && hasFile) {
+                setNotification({
+                    message: 'Please provide a title for all uploaded supporting documents',
+                    type: 'warning'
+                });
+                return;
+            }
+        }
+
         setFormLoading(true);
         try {
             const payload = { ...formData };
+
+            // Construct other documents metadata
+            const metadata = otherDocs
+                .filter(doc => doc.title.trim())
+                .map(doc => ({
+                    id: doc.id,
+                    title: doc.title,
+                    has_new_file: doc.has_new_file,
+                    file_path: doc.file_path || '',
+                    uploaded_by: doc.uploaded_by,
+                    uploaded_at: doc.uploaded_at
+                }));
+            payload.other_documents_metadata = JSON.stringify(metadata);
+
+            // Append dynamic files
+            otherDocs.forEach(doc => {
+                if (doc.has_new_file && doc.file) {
+                    payload[`other_file_${doc.id}`] = doc.file;
+                }
+            });
+
             if (editingMOU) {
                 await updateMOU(editingMOU.mou_id, payload);
                 setNotification({ message: 'MOU updated successfully', type: 'success' });
@@ -152,13 +293,15 @@ const MOU = () => {
         }
     };
 
-    const filteredMOUs = mous.filter(mou => {
-        const matchesStatus = (mou.status || 'Active').toLowerCase() === statusFilter.toLowerCase();
-        const uniName = getUniversityName(mou).toLowerCase();
-        const mouType = (mou.mou_type || '').toLowerCase();
-        const term = searchTerm.toLowerCase();
-        return matchesStatus && (uniName.includes(term) || mouType.includes(term));
-    });
+    const filteredMOUs = mous
+        .filter(mou => {
+            const matchesStatus = (mou.status || 'Active').toLowerCase() === statusFilter.toLowerCase();
+            const uniName = getUniversityName(mou).toLowerCase();
+            const mouType = (mou.mou_type || '').toLowerCase();
+            const term = searchTerm.toLowerCase();
+            return matchesStatus && (uniName.includes(term) || mouType.includes(term));
+        })
+        .sort((a, b) => b.mou_id - a.mou_id);
 
     if (masterDataLoading) return <Loader fullscreen />;
 
@@ -271,7 +414,6 @@ const MOU = () => {
                                     {/* University */}
                                     <div className="mou__col">
                                         <div className="mou__uni-name">
-                                            <Building2 size={14} style={{ marginRight: 6 }} />
                                             {getUniversityName(mou)}
                                         </div>
                                         <div className="mou__mou-id">MOU #{mou.mou_id}</div>
@@ -312,20 +454,30 @@ const MOU = () => {
                                     </div>
 
                                     {/* Document */}
-                                    <div className="mou__col">
+                                    <div className="mou__col" style={{ gap: '6px', alignItems: 'flex-start' }}>
                                         {mou.document_path ? (
                                             <button
                                                 type="button"
                                                 onClick={() => handleViewMOUDocument(mou.mou_id)}
-                                                className="mou__doc-link"
-                                                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                                                className="mou__doc-link mou__doc-link--primary"
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                                             >
                                                 <FileText size={14} />
-                                                View Doc
+                                                Agreement
                                                 <ExternalLink size={12} style={{ marginLeft: 4 }} />
                                             </button>
                                         ) : (
-                                            <span className="mou__no-doc">No document</span>
+                                            <span className="mou__no-doc">No Agreement</span>
+                                        )}
+                                        {mou.other_docs_count > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenOtherDocsPopup(mou)}
+                                                className="mou__other-docs-btn"
+                                            >
+                                                <FileText size={12} />
+                                                <span>Other Docs ({mou.other_docs_count})</span>
+                                            </button>
                                         )}
                                     </div>
 
@@ -465,17 +617,173 @@ const MOU = () => {
                                         </div>
                                     )}
                                 </div>
+
+                                {/* Other Documents Section */}
+                                <div className="mou__field mou__field--wide" style={{ marginTop: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                                    <label style={{ fontWeight: '600', fontSize: '14px', color: '#1e293b', marginBottom: '8px', display: 'block' }}>
+                                        Other Documents (Optional Supporting Files)
+                                    </label>
+                                    
+                                    {docsLoading ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '13px', padding: '10px' }}>
+                                            <span style={{ animation: 'spin 1s linear infinite', border: '2px solid #cbd5e1', borderTop: '2px solid #0f766e', borderRadius: '50%', width: '14px', height: '14px', display: 'inline-block' }}></span>
+                                            <span>Loading supporting documents...</span>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                            {otherDocs.map((doc) => (
+                                                <div key={doc.id} style={{ display: 'flex', gap: '12px', alignItems: 'center', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                                                    {/* Document Title */}
+                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                        <label style={{ fontSize: '12px', color: '#64748b', fontWeight: '500', textTransform: 'none', letterSpacing: 'normal' }}>Document Title *</label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="e.g. Meeting Minutes, Approval Email"
+                                                            value={doc.title}
+                                                            onChange={(e) => handleOtherDocChange(doc.id, 'title', e.target.value)}
+                                                            style={{ width: '100%', padding: '6px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }}
+                                                        />
+                                                    </div>
+
+                                                    {/* File Upload */}
+                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                        <label style={{ fontSize: '12px', color: '#64748b', fontWeight: '500', textTransform: 'none', letterSpacing: 'normal' }}>Upload File *</label>
+                                                        {doc.has_new_file ? (
+                                                            <input
+                                                                type="file"
+                                                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                                onChange={(e) => handleOtherDocChange(doc.id, 'file', e.target.files[0] || null)}
+                                                                style={{ fontSize: '13px', background: 'transparent', border: 'none', padding: 0 }}
+                                                            />
+                                                        ) : (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#0f766e', fontWeight: '500' }}>
+                                                                <FileText size={14} />
+                                                                <span>{doc.title || 'Supporting File'}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleOtherDocChange(doc.id, 'has_new_file', true)}
+                                                                    style={{ fontSize: '11px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                                                                >
+                                                                    Replace
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Remove Button */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveOtherDoc(doc.id)}
+                                                        style={{ padding: '8px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end', marginBottom: '4px' }}
+                                                        title="Remove"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            ))}
+
+                                            <button
+                                                type="button"
+                                                onClick={handleAddOtherDoc}
+                                                style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#0f766e', background: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: '6px', border: '1px dashed #0f766e', fontWeight: '500', transition: 'all 0.2s' }}
+                                            >
+                                                <Plus size={14} />
+                                                Add Other Document
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="mou__modal-actions">
                                 <ActionButton variant="secondary" type="button" onClick={() => setShowModal(false)}>
                                     Cancel
                                 </ActionButton>
-                                <ActionButton variant="primary" type="submit" disabled={formLoading}>
-                                    {formLoading ? 'Saving…' : editingMOU ? 'Update MOU' : 'Create MOU'}
+                                <ActionButton variant="primary" type="submit" disabled={formLoading || docsLoading}>
+                                    {formLoading ? 'Saving…' : docsLoading ? 'Loading Docs…' : editingMOU ? 'Update MOU' : 'Create MOU'}
                                 </ActionButton>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {showOtherDocsModal && selectedMOUForDocs && (
+                <div className="mou__modal-overlay" onClick={() => setShowOtherDocsModal(false)}>
+                    <div className="mou__modal mou__modal--other-docs" onClick={(e) => e.stopPropagation()}>
+                        <div className="mou__modal-header">
+                            <h2 className="mou__modal-title">
+                                Supporting Documents - {selectedMOUForDocs.university_name || `MOU #${selectedMOUForDocs.mou_id}`}
+                            </h2>
+                            <button
+                                type="button"
+                                className="mou__modal-close-btn"
+                                onClick={() => setShowOtherDocsModal(false)}
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        {popupLoading ? (
+                            <div className="mou__popup-loader">
+                                <Loader size="medium" />
+                                <p style={{ marginTop: '8px', color: '#64748b', fontSize: '0.85rem' }}>Loading documents...</p>
+                            </div>
+                        ) : popupDocs.length === 0 ? (
+                            <div className="mou__popup-empty">
+                                <AlertCircle size={32} style={{ color: '#94a3b8' }} />
+                                <p>No supporting documents uploaded for this university.</p>
+                            </div>
+                        ) : (
+                            <div className="mou__popup-list">
+                                {popupDocs.map((doc, idx) => (
+                                    <div key={idx} className="mou__popup-item">
+                                        <div className="mou__popup-item-header">
+                                            <span className="mou__popup-item-number">{idx + 1}.</span>
+                                            <span className="mou__popup-item-title">{doc.title}</span>
+                                        </div>
+                                        
+                                        <div className="mou__popup-item-meta">
+                                            <div className="mou__popup-meta-field">
+                                                <span className="mou__meta-label">Uploaded By:</span>
+                                                <span className="mou__meta-value">{doc.uploaded_by || 'Admin'}</span>
+                                            </div>
+                                            <div className="mou__popup-meta-field">
+                                                <span className="mou__meta-label">Uploaded On:</span>
+                                                <span className="mou__meta-value">{doc.uploaded_at || '—'}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mou__popup-item-actions">
+                                            <button
+                                                type="button"
+                                                className="mou__popup-btn mou__popup-btn--preview"
+                                                onClick={() => handleViewOtherDocument(selectedMOUForDocs.mou_id, doc.file_index)}
+                                            >
+                                                Preview
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="mou__popup-btn mou__popup-btn--download"
+                                                onClick={() => {
+                                                    const ext = doc.file_path ? doc.file_path.split('.').pop() : 'pdf';
+                                                    const cleanTitle = doc.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                                                    handleDownloadOtherDocument(selectedMOUForDocs.mou_id, doc.file_index, `${cleanTitle}.${ext}`);
+                                                }}
+                                            >
+                                                Download
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        
+                        <div className="mou__modal-actions" style={{ marginTop: '20px', borderTop: '1px solid #f1f5f9', paddingTop: '15px' }}>
+                            <ActionButton variant="secondary" onClick={() => setShowOtherDocsModal(false)}>
+                                Close
+                            </ActionButton>
+                        </div>
                     </div>
                 </div>
             )}

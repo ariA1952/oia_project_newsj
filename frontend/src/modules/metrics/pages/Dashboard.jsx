@@ -145,12 +145,12 @@ const Dashboard = () => {
                     ) : (
                         <div className="dashboard__table-container">
                             <table className="dashboard__table">
-                                <thead><tr><th>Parameter</th><th>Partner University</th><th>Value</th><th>Status</th><th>Entered By</th></tr></thead>
+                                <thead><tr><th>Activity Title</th><th>Partner University</th><th>Value</th><th>Status</th><th>Entered By</th></tr></thead>
                                 <tbody>
                                     {detailActivities.length > 0
                                         ? detailActivities.map((activity) => (
                                             <tr key={activity.activity_id}>
-                                                <td>{masterData.parameters.find(p => p.parameter_id === activity.parameter_id)?.parameter_name || 'N/A'}</td>
+                                                <td>{activity.activity_title || 'Untitled Activity'}</td>
                                                 <td>{masterData.universities.find(u => u.university_id === activity.university_id)?.university_name || 'N/A'}</td>
                                                 <td>{activity.numeric_value}</td>
                                                 <td><span className={`status-badge status-badge--${activity.status.toLowerCase()}`}>{activity.status}</span></td>

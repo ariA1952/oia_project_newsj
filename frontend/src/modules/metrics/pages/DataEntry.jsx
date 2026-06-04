@@ -382,9 +382,10 @@ const DataEntry = () => {
                                     .map((parameter, idx) => {
                                         let activities = existingActivities[String(parameter.parameter_id)] || [null];
 
-                                        // NEW: For Admin and Faculty, hide APPROVED rows in data entry view
-                                        if (['OIA_ADMIN', 'SUPER_ADMIN', 'FACULTY'].includes(user?.erp_users_type)) {
-                                            activities = activities.filter(a => !a || (a.status !== 'APPROVED' && a.status !== 'REJECTED'));
+                                        // For OIA_ADMIN and FACULTY, hide non-editable rows in data entry view.
+                                        // SUPER_ADMIN sees ALL statuses so they can delete any activity.
+                                        if (['OIA_ADMIN', 'FACULTY'].includes(user?.erp_users_type)) {
+                                            activities = activities.filter(a => !a || a.status === 'DRAFT' || a.status === 'CLARIFICATION_REQUESTED');
                                             // If we filtered everything out, show a blank row to allow new entries
                                             if (activities.length === 0) {
                                                 activities = [null];
@@ -412,6 +413,10 @@ const DataEntry = () => {
                                                     onSubmit={handleSubmitForApproval}
                                                     userRole={userRole}
                                                     autoEdit={!!searchParams.get('edit_p_id')}
+                                                    academicYearId={context.academic_year_id}
+                                                    campusId={context.campus_id}
+                                                    departmentId={context.department_id}
+                                                    onBulkComplete={fetchExistingActivities}
                                                     onAdd={() => {
                                                         const freshMapping = { ...existingActivities };
                                                         const pid = String(parameter.parameter_id);

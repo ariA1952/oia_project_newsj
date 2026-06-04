@@ -447,22 +447,75 @@
 
 /* Existing (server) documents */
 .activity-row-card__existing-docs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 8px;
 }
 
 .activity-row-card__existing-doc-tag {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 20px;
-    font-size: 0.76rem;
-    color: #1d4ed8;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.activity-row-card__existing-doc-tag:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.activity-row-card__existing-doc-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.activity-row-card__existing-doc-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.activity-row-card__existing-doc-name {
+    font-size: 0.84rem;
+    color: #334155;
     font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.activity-row-card__download-btn {
+    padding: 5px 12px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.1);
+}
+
+.activity-row-card__download-btn:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+.activity-row-card__download-btn:active {
+    transform: translateY(0);
 }
 
 /* ─── Multi-University Select ─────────────────────────────────── */
@@ -749,4 +802,56 @@
     color: #92400e;
     font-size: 0.84rem;
     font-weight: 500;
+}
+
+/* ─── Other Documents Section ───────────────────────────────── */
+
+.param-row-other-docs {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.param-row-other-docs__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.param-row-other-docs__add {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1.5px dashed #93c5fd;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.param-row-other-docs__add:hover {
+    background: #dbeafe;
+}
+
+.param-row-other-doc-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px 10px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
 }

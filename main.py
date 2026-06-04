@@ -5,6 +5,8 @@ from fastapi.exceptions import HTTPException, RequestValidationError
 from backend.routers import partner_router, activity_router, auth_router, mou_router, general_router
 from backend.dashboard_router import dashboard_router
 from backend.master_data_routers import master_data_router
+from backend.bulk_router import bulk_router
+from backend.outgoing_faculty_router import outgoing_faculty_router
 from backend.database import Base, engine
 
 # Create tables if they don't exist (optional, but good for local dev)
@@ -52,14 +54,17 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         headers=_cors_headers(request),
     )
 
-'''@app.exception_handler(Exception)
+@app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
-    print("Unhandled Exception:", str(exc))
+    """Global handler for any unexpected server errors."""
+    print(f"DEBUG: Unhandled Exception: {str(exc)}")
+    import traceback
+    traceback.print_exc()
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal Server Error"},
+        content={"detail": f"Internal Server Error: {str(exc)}"},
         headers=_cors_headers(request),
-    )'''
+    )
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -78,6 +83,8 @@ app.include_router(master_data_router)
 app.include_router(auth_router)
 app.include_router(general_router)
 app.include_router(dashboard_router)
+app.include_router(bulk_router)
+app.include_router(outgoing_faculty_router)
 
 
 @app.get("/")

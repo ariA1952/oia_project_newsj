@@ -6,7 +6,8 @@ import {
   BarChart3,
   LogOut,
   Building2,
-  FileText
+  FileText,
+  Plane
 }
   from 'lucide-react';
 import Dashboard from './modules/metrics/pages/Dashboard';
@@ -15,6 +16,7 @@ import Review from './modules/metrics/pages/Review';
 import Reports from './modules/metrics/pages/Reports';
 import Partners from './modules/metrics/pages/Partners';
 import MOU from './modules/metrics/pages/MOU';
+import OutgoingFaculty from './modules/metrics/pages/OutgoingFaculty';
 import LoginPage from './modules/auth/pages/LoginPage';
 import { AuthProvider, useAuth } from './common/AuthContext';
 import ProtectedRoute from './common/ProtectedRoute';
@@ -41,6 +43,11 @@ const Sidebar = () => {
       label: 'MOU',
       icon: <FileText size={20} />,
       // All roles can access (RBAC enforced inside the page)
+    },
+    {
+      path: '/outgoing-faculty',
+      label: 'Outgoing Faculty',
+      icon: <Plane size={20} />,
     },
   ].filter(item => !item.roles || item.roles.includes(user?.erp_users_type));
 
@@ -141,6 +148,12 @@ function App() {
           <Route path="/mou" element={
             <ProtectedRoute>
               <Layout><MOU /></Layout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/outgoing-faculty" element={
+            <ProtectedRoute>
+              <Layout><OutgoingFaculty /></Layout>
             </ProtectedRoute>
           } />
 

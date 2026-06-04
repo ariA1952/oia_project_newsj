@@ -50,12 +50,15 @@ const countByStatus = (activities) => {
 // ─── Level 3: Row Field Summary ──────────────────────────────────────────────
 
 const RowFieldSummary = memo(({ row, config, universities }) => {
-    const getUniNames = (ids) =>
-        (ids ?? [])
-            .map((id) =>
-                universities.find((u) => String(u.university_id) === String(id))?.university_name ?? `ID:${id}`
-            )
+    const getUniNames = (ids) => {
+        const arr = Array.isArray(ids) ? ids : (typeof ids === 'string' ? ids.split(',') : []);
+        return arr
+            .map((id) => {
+                const cleanedId = String(id).trim();
+                return universities.find((u) => String(u.university_id) === cleanedId)?.university_name ?? `ID:${cleanedId}`;
+            })
             .join(', ') || '—';
+    };
 
     const paramFields = (config?.fields ?? []).filter(
         (f) => !['partner_universities', 'start_date', 'end_date'].includes(f.id)
@@ -78,11 +81,21 @@ const RowFieldSummary = memo(({ row, config, universities }) => {
             {dateFields.map((f) => {
                 const val = f.id === 'start_date' ? row.start_date : row.end_date;
                 if (!val) return null;
+                // Format month-type fields: "2026-05-01" → "May 2026"
+                const isMonthType = config?.fields?.find((cf) => cf.id === f.id)?.type === 'month';
+                const displayVal = isMonthType
+                    ? (() => {
+                        try {
+                            const d = new Date(val.length === 7 ? val + '-01' : val);
+                            return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+                        } catch { return val; }
+                    })()
+                    : val;
                 return (
                     <div key={f.id} className="rv-row-field">
                         <Calendar size={13} className="rv-row-field__icon" />
                         <span className="rv-row-field__label">{f.label}:</span>
-                        <span>{val}</span>
+                        <span>{displayVal}</span>
                     </div>
                 );
             })}
@@ -90,10 +103,21 @@ const RowFieldSummary = memo(({ row, config, universities }) => {
             {paramFields.map((f) => {
                 const val = row.fields?.[f.id];
                 if (!val && val !== 0) return null;
+                // Format month-type fields
+                const isMonthType = f.type === 'month';
+                const displayVal = isMonthType
+                    ? (() => {
+                        try {
+                            const s = String(val);
+                            const d = new Date(s.length === 7 ? s + '-01' : s);
+                            return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+                        } catch { return String(val); }
+                    })()
+                    : String(val);
                 return (
                     <div key={f.id} className="rv-row-field">
                         <span className="rv-row-field__label">{f.label}:</span>
-                        <span>{String(val)}</span>
+                        <span>{displayVal}</span>
                     </div>
                 );
             })}
@@ -117,19 +141,16 @@ const RowFieldSummary = memo(({ row, config, universities }) => {
                         .filter((d) => {
                             const dk = docKey(d);
                             let paths = row.documents?.[dk];
-                            
                             if (!paths) {
                                 const fallbackKey = Object.keys(row.documents ?? {}).find(
                                     (key) => key.includes(dk) || dk.includes(key)
                                 );
                                 if (fallbackKey) paths = row.documents[fallbackKey];
                             }
-                            
                             if (!paths) {
                                 const allDocs = Object.values(row.documents ?? {}).flat();
                                 if (allDocs.length > 0) paths = allDocs;
                             }
-                            
                             return Array.isArray(paths) && paths.length > 0;
                         })
                         .map((d) => (
@@ -137,6 +158,17 @@ const RowFieldSummary = memo(({ row, config, universities }) => {
                                 <FileText size={11} /> {d}
                             </span>
                         ))}
+                    {/* Other Documents badges */}
+                    {Object.entries(row.documents ?? {})
+                        .filter(([k, v]) => k.startsWith('other_document_') && Array.isArray(v) && v.length > 0)
+                        .map(([k]) => {
+                            const customTitle = row.other_docs_metadata?.[k] || k.replace('other_document_', 'Other Doc ');
+                            return (
+                                <span key={k} className="rv-doc-btn" title={customTitle}>
+                                    <FileText size={11} /> {customTitle}
+                                </span>
+                            );
+                        })}
                 </div>
             )}
         </div>
@@ -157,7 +189,7 @@ const RowDetailPanel = memo(({ activity, config, universities, onViewDoc }) => {
                     <span className="rv-row-card__label">Entry {ri + 1}</span>
                     <RowFieldSummary row={row} config={config} universities={universities} />
 
-                    {/* Per-row document downloads */}
+                    {/* Per-row document downloads (standard + other docs) */}
                     {Object.entries(row.documents ?? {}).some(([, v]) => Array.isArray(v) && v.length > 0) && (
                         <div className="rv-row-docs" style={{ marginTop: 4 }}>
                             {config?.documents?.map(docName => {
@@ -189,11 +221,29 @@ const RowDetailPanel = memo(({ activity, config, universities, onViewDoc }) => {
                                         onClick={() => onViewDoc(activity.activity_id, ri, dk, fi)}
                                         title={`Download ${docName}`}
                                     >
-                                        <Download size={11} style={{ marginRight: 4 }} /> 
+                                        <Download size={11} style={{ marginRight: 4 }} />
                                         {docName} {resolvedPaths.length > 1 ? `(${fi + 1})` : ''}
                                     </button>
                                 ));
                             })}
+                            {/* Other Documents download buttons */}
+                            {Object.entries(row.documents ?? {})
+                                .filter(([k, v]) => k.startsWith('other_document_') && Array.isArray(v) && v.length > 0)
+                                .flatMap(([docType, paths]) =>
+                                    paths.map((p, fi) => (
+                                        <button
+                                            key={`${docType}-${fi}`}
+                                            type="button"
+                                            className="rv-doc-btn rv-doc-btn--other"
+                                            onClick={() => onViewDoc(activity.activity_id, ri, docType, fi)}
+                                            title={p.split('/').pop() || 'Other Document'}
+                                        >
+                                            <Download size={11} style={{ marginRight: 4 }} />
+                                            {row.other_docs_metadata?.[docType] || `Other Doc ${docType.replace('other_document_', '')}`}
+                                            {paths.length > 1 ? ` (${fi + 1})` : ''}
+                                        </button>
+                                    ))
+                                )}
                         </div>
                     )}
                 </div>
@@ -234,7 +284,12 @@ const ActivityCard = memo(({
         <div className={cardClass}>
             <div className="rv-activity-top">
                 <div className="rv-activity-info">
-                    <div className="rv-activity-title">
+                    <div
+                        className="rv-activity-title"
+                        onClick={() => onDetailsOpen(activity)}
+                        style={{ cursor: 'pointer' }}
+                        title="Click to view full details modal"
+                    >
                         {activity.activity_title || '(Untitled Activity)'}
                     </div>
                     <div className="rv-activity-meta">
@@ -328,16 +383,47 @@ const ActivityCard = memo(({
                 </div>
             </div>
 
-            {/* View Details → opens modal popup */}
-            <button
-                type="button"
-                className="rv-detail-toggle"
-                onClick={() => onDetailsOpen(activity)}
-            >
-                <ChevronRight size={13} />
-                View Details
-                <span style={{ fontWeight: 400, color: '#9ca3af' }}>({rows.length})</span>
-            </button>
+            {/* View Details → toggles inline row panel and allows popup details */}
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <button
+                    type="button"
+                    className="rv-detail-toggle"
+                    onClick={() => setExpanded(!expanded)}
+                >
+                    {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                    {expanded ? 'Hide Entries' : 'View Entries'}
+                    <span style={{ fontWeight: 400, color: '#9ca3af' }}>({rows.length})</span>
+                </button>
+                <button
+                    type="button"
+                    className="rv-detail-toggle"
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--primary, #3b82f6)',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                        padding: '4px 8px'
+                    }}
+                    onClick={() => onDetailsOpen(activity)}
+                >
+                    Popup Details
+                </button>
+            </div>
+
+            {expanded && (
+                <div className="rv-activity-details-inline" style={{ marginTop: 12 }}>
+                    <RowDetailPanel
+                        activity={activity}
+                        config={config}
+                        universities={universities}
+                        onViewDoc={onViewDoc}
+                    />
+                </div>
+            )}
         </div>
     );
 });

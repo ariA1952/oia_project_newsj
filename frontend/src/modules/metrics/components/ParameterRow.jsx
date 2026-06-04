@@ -7,6 +7,10 @@ import ActionButton from '../../../common/ActionButton';
 import { useAuth } from '../../../common/AuthContext';
 import { downloadActivityDocument, checkDuplicateActivity } from '../services/metricsService';
 import SuggestUniversityModal from './SuggestUniversityModal';
+import EntryModeDropdown from './EntryModeDropdown';
+import ExcelImportModal from './ExcelImportModal';
+import OutgoingStudentsImportModal from './OutgoingStudentsImportModal';
+import DynamicMultiEntryModal from './DynamicMultiEntryModal';
 import {
     getParamConfig,
     docKey,
@@ -14,22 +18,10 @@ import {
     rowsFromActivityData,
     getRowFieldValue,
     setRowFieldValue,
+    FALLBACK_CONFIG,
 } from '../config/parameterConfigs';
 import './ParameterRow.css';
 
-// ─── Fallback config for parameters not yet in the config file ────────────────
-const FALLBACK_CONFIG = {
-    label: 'General Activity',
-    multiRow: true,
-    adminOnly: false,
-    fields: [
-        { id: 'partner_universities', label: 'Partner Universities / Org.', type: 'multi-uni' },
-        { id: 'start_date', label: 'Start Date', type: 'date' },
-        { id: 'end_date', label: 'End Date', type: 'date' },
-        { id: 'remarks', label: 'Remarks / Notes', type: 'textarea' },
-    ],
-    documents: ['Report', 'Other'],
-};
 
 // ─── MultiUniversitySelect ─────────────────────────────────────────────────────
 
@@ -309,6 +301,7 @@ const RowCard = ({
     config, universities,
     onChange, onRemove,
     isEditable, disabled,
+    activityId, // Added activityId to support downloads
 }) => {
     const fileInputRefs = useRef({});
 
@@ -337,6 +330,23 @@ const RowCard = ({
     };
 
     const canRemove = isEditable && !disabled && totalRows > 1;
+
+    const handleDownload = async (docType, fileIndex) => {
+        if (!activityId) return;
+        try {
+            const url = await downloadActivityDocument(activityId, rowIndex, docType, fileIndex);
+            const a = document.createElement('a');
+            a.href = url;
+            const docLabel = docType ? `_${docType}` : '';
+            a.download = `Activity_Document_${activityId}${docLabel}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            alert('Failed to download document. Please try again.');
+        }
+    };
 
     return (
         <div className="activity-row-card">
@@ -391,13 +401,26 @@ const RowCard = ({
                                         <label className="parameter-row__label">
                                             {f.label} <span className="param-required">*</span>
                                         </label>
-                                        <input
-                                            type="date"
-                                            className={`parameter-row__input-date ${dateError ? 'input-error' : ''}`}
-                                            value={val}
-                                            onChange={(e) => updateField(f.id, e.target.value)}
-                                            disabled={!isEditable || disabled}
-                                        />
+                                        {f.type === 'month' ? (
+                                            <input
+                                                type="month"
+                                                className={`parameter-row__input-date ${dateError ? 'input-error' : ''}`}
+                                                value={val ? val.substring(0, 7) : ''}
+                                                onChange={(e) => {
+                                                    const v = e.target.value;
+                                                    updateField(f.id, v ? `${v}-01` : '');
+                                                }}
+                                                disabled={!isEditable || disabled}
+                                            />
+                                        ) : (
+                                            <input
+                                                type="date"
+                                                className={`parameter-row__input-date ${dateError ? 'input-error' : ''}`}
+                                                value={val}
+                                                onChange={(e) => updateField(f.id, e.target.value)}
+                                                disabled={!isEditable || disabled}
+                                            />
+                                        )}
                                         {dateError && (
                                             <span className="parameter-row__error">Must be after start date</span>
                                         )}
@@ -503,16 +526,139 @@ const RowCard = ({
                                 {Object.entries(row.existingDocuments).map(([docType, paths]) =>
                                     Array.isArray(paths) &&
                                     paths.map((p, pi) => (
-                                        <span key={`${docType}-${pi}`} className="activity-row-card__existing-doc-tag">
-                                            <FileText size={12} />
-                                            {config.documents.find(
-                                                (d) => docKey(d) === docType
-                                            ) ?? docType}: {p.split('/').pop() || p}
-                                        </span>
+                                        <div key={`${docType}-${pi}`} className="activity-row-card__existing-doc-tag">
+                                            <div className="activity-row-card__existing-doc-info">
+                                                <FileText size={12} />
+                                                <span className="activity-row-card__existing-doc-label">
+                                                    {config.documents.find(
+                                                        (d) => docKey(d) === docType
+                                                    ) ?? (row.otherDocsMetadata?.[docType] || docType.replace('other_document_', 'Other Doc '))}:
+                                                </span>
+                                                <span className="activity-row-card__existing-doc-name" title={p}>
+                                                    {p.split('/').pop() || p}
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="activity-row-card__download-btn"
+                                                onClick={() => handleDownload(docType, pi)}
+                                                title="Download Document"
+                                            >
+                                                Download
+                                            </button>
+                                        </div>
                                     ))
                                 )}
                             </div>
                         )}
+
+                    {/* Other Documents — available to all parameters */}
+                    <div className="param-row-other-docs">
+                        <div className="param-row-other-docs__header">
+                            <span>Other Documents</span>
+                            {isEditable && !disabled && (
+                                <button
+                                    type="button"
+                                    className="param-row-other-docs__add"
+                                    onClick={() => {
+                                        const current = row.otherDocuments ?? [];
+                                        onChange({ ...row, otherDocuments: [...current, { title: '', file: null }] });
+                                    }}
+                                >
+                                    <Plus size={13} /> Add Document
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Edit mode: list of title + file inputs */}
+                        {isEditable && !disabled && (row.otherDocuments ?? []).map((od, odi) => (
+                            <div key={odi} className="param-row-other-doc-item">
+                                <input
+                                    type="text"
+                                    className="parameter-row__input-text"
+                                    placeholder="Document title (required)"
+                                    value={od.title}
+                                    onChange={(e) => {
+                                        const updated = [...(row.otherDocuments ?? [])];
+                                        updated[odi] = { ...od, title: e.target.value };
+                                        onChange({ ...row, otherDocuments: updated });
+                                    }}
+                                    style={{ flex: 1, minWidth: 140 }}
+                                />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    {od.file ? (
+                                        <span style={{ fontSize: '0.78rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <FileText size={12} />
+                                            {od.file.name}
+                                        </span>
+                                    ) : (
+                                        <>
+                                            <input
+                                                type="file"
+                                                id={`other-doc-${row.id}-${odi}`}
+                                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                className="parameter-row__file-input"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0] ?? null;
+                                                    const updated = [...(row.otherDocuments ?? [])];
+                                                    updated[odi] = { ...od, file };
+                                                    onChange({ ...row, otherDocuments: updated });
+                                                }}
+                                            />
+                                            <label
+                                                htmlFor={`other-doc-${row.id}-${odi}`}
+                                                className="parameter-row__file-label"
+                                                style={{ fontSize: '0.78rem' }}
+                                            >
+                                                <Upload size={12} /> Choose file
+                                            </label>
+                                        </>
+                                    )}
+                                    <button
+                                        type="button"
+                                        className="activity-row-card__remove"
+                                        style={{ padding: '2px 6px' }}
+                                        onClick={() => {
+                                            const updated = (row.otherDocuments ?? []).filter((_, i) => i !== odi);
+                                            onChange({ ...row, otherDocuments: updated });
+                                        }}
+                                        title="Remove"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* View mode: show server-saved other documents */}
+                        {(!isEditable || disabled) && (
+                            Object.entries(row.existingDocuments ?? {})
+                                .filter(([k]) => k.startsWith('other_document_'))
+                                .flatMap(([docType, paths]) =>
+                                    (Array.isArray(paths) ? paths : []).map((p, pi) => (
+                                        <div key={`${docType}-${pi}`} className="activity-row-card__existing-doc-tag">
+                                            <div className="activity-row-card__existing-doc-info">
+                                                <FileText size={12} />
+                                                <span className="activity-row-card__existing-doc-label">
+                                                    {(row.otherDocsMetadata?.[docType] || docType.replace('other_document_', 'Other Doc '))}:
+                                                </span>
+                                                <span className="activity-row-card__existing-doc-name" title={p}>
+                                                    {p.split('/').pop() || p}
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="activity-row-card__download-btn"
+                                                onClick={() => handleDownload(docType, pi)}
+                                                title="Download"
+                                            >
+                                                Download
+                                            </button>
+                                        </div>
+                                    ))
+                                )
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
@@ -529,10 +675,14 @@ const ParameterRow = ({
     onDelete,
     onSubmit,
     onAdd,
+    onBulkComplete,
     disabled = false,
     isContextSelected = false,
     userRole: userRoleProp,
     autoEdit = false,
+    academicYearId,
+    campusId,
+    departmentId,
 }) => {
     const { user } = useAuth();
     const userRole = userRoleProp || user?.erp_users_type;
@@ -544,13 +694,51 @@ const ParameterRow = ({
     const config = getParamConfig(parameter) ?? FALLBACK_CONFIG;
     const isAdminLocked = config.adminOnly && !isAdmin;
 
-    const [isEditing, setIsEditing] = useState(autoEdit || !existingData);
+    const [isEditing, setIsEditing] = useState(autoEdit);
+    const [isManualMode, setIsManualMode] = useState(autoEdit || !!existingData);
     const [activityTitle, setActivityTitle] = useState(existingData?.activity_title ?? '');
     const [rows, setRows] = useState(() =>
         rowsFromActivityData(existingData?.activity_data, config)
     );
     const [errors, setErrors] = useState([]);
     const [duplicateWarnings, setDuplicateWarnings] = useState([]);
+
+    // Bulk entry modal states
+    const [showExcelModal, setShowExcelModal] = useState(false);
+    const [showOutgoingStudentsModal, setShowOutgoingStudentsModal] = useState(false);
+    const [showDynamicModal, setShowDynamicModal] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+    // Determine if Excel import should be offered (only for Outgoing Students)
+    const isOutgoingStudents = parameter?.parameter_name
+        ?.toLowerCase()
+        .includes('outgoing student');
+
+    const handleEntryModeSelect = (mode) => {
+        if (mode === 'manual') {
+            if (!existingData) {
+                setIsManualMode(true);
+                setIsEditing(true);
+            } else {
+                onAdd && onAdd();
+            }
+        } else if (mode === 'excel') {
+            const isOutgoingStudents = parameter?.parameter_name
+                ?.toLowerCase()
+                .includes('outgoing student');
+            if (isOutgoingStudents) {
+                setShowOutgoingStudentsModal(true);
+            } else {
+                setShowExcelModal(true);
+            }
+        } else if (mode === 'dynamic') {
+            setShowDynamicModal(true);
+        }
+    };
+
+    const handleBulkComplete = () => {
+        if (onBulkComplete) onBulkComplete();
+    };
 
     const rowsJson = JSON.stringify(rows);
 
@@ -663,8 +851,34 @@ const ParameterRow = ({
 
         const rowFiles = [];
         rows.forEach((row, rowIndex) => {
+            // Standard document files
             Object.entries(row.documents ?? {}).forEach(([docType, files]) => {
                 files.forEach((file) => rowFiles.push({ rowIndex, docType, file }));
+            });
+            // Other document files (each has a title + file)
+            const existingOtherKeys = Object.keys(row.existingDocuments ?? {})
+                .filter(k => k.startsWith('other_document_'));
+            let nextOdIdx = 0;
+            existingOtherKeys.forEach(k => {
+                const match = k.match(/other_document_(\d+)/);
+                if (match) {
+                    const idx = parseInt(match[1], 10);
+                    if (idx >= nextOdIdx) {
+                        nextOdIdx = idx + 1;
+                    }
+                }
+            });
+
+            (row.otherDocuments ?? []).forEach((od) => {
+                if (od.file && od.title?.trim()) {
+                    rowFiles.push({
+                        rowIndex,
+                        docType: `other_document_${nextOdIdx}`,
+                        file: od.file,
+                        docTitle: od.title.trim(),
+                    });
+                    nextOdIdx++;
+                }
             });
         });
 
@@ -672,15 +886,39 @@ const ParameterRow = ({
             parameter_id: parameter.parameter_id,
             activity_title: activityTitle || null,
             activity_data: {
-                rows: rows.map((row) => ({
-                    partner_universities: (row.partner_universities ?? []).map(Number),
-                    start_date: row.start_date || null,
-                    end_date: row.end_date || null,
-                    fields: row.fields ?? {},
-                    ...(row.existingDocuments && Object.keys(row.existingDocuments).length > 0
-                        ? { documents: row.existingDocuments }
-                        : {}),
-                })),
+                rows: rows.map((row) => {
+                    const other_docs_metadata = { ...(row.otherDocsMetadata ?? {}) };
+                    const existingOtherKeys = Object.keys(row.existingDocuments ?? {})
+                        .filter(k => k.startsWith('other_document_'));
+                    let nextOdIdx = 0;
+                    existingOtherKeys.forEach(k => {
+                        const match = k.match(/other_document_(\d+)/);
+                        if (match) {
+                            const idx = parseInt(match[1], 10);
+                            if (idx >= nextOdIdx) {
+                                nextOdIdx = idx + 1;
+                            }
+                        }
+                    });
+
+                    (row.otherDocuments ?? []).forEach((od) => {
+                        if (od.file && od.title?.trim()) {
+                            other_docs_metadata[`other_document_${nextOdIdx}`] = od.title.trim();
+                            nextOdIdx++;
+                        }
+                    });
+
+                    return {
+                        partner_universities: (row.partner_universities ?? []).map(Number),
+                        start_date: row.start_date || null,
+                        end_date: row.end_date || null,
+                        fields: row.fields ?? {},
+                        ...(row.existingDocuments && Object.keys(row.existingDocuments).length > 0
+                            ? { documents: row.existingDocuments }
+                            : {}),
+                        other_docs_metadata,
+                    };
+                }),
             },
             rowFiles,
         };
@@ -729,14 +967,13 @@ const ParameterRow = ({
                         <span className="parameter-row__code">{parameter.parameter_code}</span>
                     )}
                 </div>
-                {isContextSelected && !isHOD && existingData && (
-                    <ActionButton
-                        variant="primary"
-                        onClick={onAdd}
-                        title="Add another entry for this parameter"
-                    >
-                        <Plus size={14} style={{ marginRight: 4 }} /> Add another entry
-                    </ActionButton>
+                {isContextSelected && !isHOD && !isApproved && !isSubmitted && (
+                    <EntryModeDropdown
+                        label={existingData ? "Bulk Actions" : "Add Entry"}
+                        onSelect={handleEntryModeSelect}
+                        disabled={disabled}
+                        showExcel={isOutgoingStudents}
+                    />
                 )}
             </div>
 
@@ -748,7 +985,7 @@ const ParameterRow = ({
                 </div>
             )}
 
-            {!isAdminLocked && (
+            {!isAdminLocked && isManualMode && (
                 <>
                     {/* Activity-level title */}
                     <div className="parameter-row__field">
@@ -796,6 +1033,7 @@ const ParameterRow = ({
                                 onRemove={() => removeRow(idx)}
                                 isEditable={isEditing && isEditable}
                                 disabled={disabled}
+                                activityId={existingData?.activity_id}
                             />
                         ))}
 
@@ -807,7 +1045,7 @@ const ParameterRow = ({
                                 onClick={addRow}
                                 style={{ marginTop: '8px' }}
                             >
-                                <Plus size={14} /> Add another entry
+                                <Plus size={14} /> Add another row
                             </button>
                         )}
                     </div>
@@ -849,69 +1087,166 @@ const ParameterRow = ({
 
             {/* Actions */}
             <div className="parameter-row__actions">
-                {isEditing && !disabled && !isAdminLocked ? (
+                {(isManualMode || existingData) && (
                     <>
-                        <ActionButton variant="success" onClick={handleSave}>
-                            {existingData ? 'Save Changes' : 'Save as Draft'}
-                        </ActionButton>
-                        {existingData && (
-                            <ActionButton variant="secondary" onClick={handleCancel}>
-                                Cancel
-                            </ActionButton>
-                        )}
-                    </>
-                ) : !isAdminLocked ? (
-                    <>
-                        {isEditable && !isHOD && (
+                        {isEditing && !disabled && !isAdminLocked ? (
                             <>
-                                <ActionButton variant="primary" onClick={() => setIsEditing(true)}>
-                                    {existingData ? 'Edit' : 'Create'}
+                                <ActionButton variant="success" onClick={handleSave}>
+                                    {existingData ? 'Save Changes' : 'Save as Draft'}
                                 </ActionButton>
-                                {existingData && isDraft && (
-                                    <ActionButton
-                                        variant="success"
-                                        onClick={() => onSubmit(existingData.activity_id)}
-                                    >
-                                        Request Approval
-                                    </ActionButton>
-                                )}
-                                {existingData && isClarificationRequested && (
-                                    <ActionButton
-                                        variant="warning"
-                                        onClick={() => onSubmit(existingData.activity_id)}
-                                    >
-                                        Resubmit
+                                {existingData && (
+                                    <ActionButton variant="secondary" onClick={handleCancel}>
+                                        Cancel
                                     </ActionButton>
                                 )}
                             </>
-                        )}
-                        {!isEditable && !isHOD && existingData && (
-                            <span className="action-label">
-                                {isApproved
-                                    ? 'Approved ✓'
-                                    : isSubmitted
-                                        ? 'Awaiting Review'
-                                        : 'Read Only'}
-                            </span>
-                        )}
-                        {isHOD && <span className="action-label">View Only</span>}
-                        {/* Grey + button moved to parameter header as Blue button */}
-                        {isSuperAdmin && existingData && (
-                            <ActionButton
-                                variant="danger"
-                                onClick={() => {
-                                    if (window.confirm('Are you sure you want to delete this activity?')) {
-                                        onDelete(existingData.activity_id);
-                                    }
-                                }}
-                                title="Delete this activity"
-                            >
-                                <Trash2 size={14} /> Delete
-                            </ActionButton>
-                        )}
+                        ) : !isAdminLocked ? (
+                            <>
+                                {isEditable && !isHOD && (
+                                    <>
+                                        <ActionButton variant="primary" onClick={() => setIsEditing(true)}>
+                                            {existingData ? 'Edit' : 'Create'}
+                                        </ActionButton>
+                                        {existingData && isDraft && (
+                                            <ActionButton
+                                                variant="success"
+                                                onClick={() => onSubmit(existingData.activity_id)}
+                                            >
+                                                Request Approval
+                                            </ActionButton>
+                                        )}
+                                        {existingData && isClarificationRequested && (
+                                            <ActionButton
+                                                variant="warning"
+                                                onClick={() => onSubmit(existingData.activity_id)}
+                                            >
+                                                Resubmit
+                                            </ActionButton>
+                                        )}
+                                        {/* Delete Draft — available to owner and admins */}
+                                        {existingData && isDraft && (
+                                            <ActionButton
+                                                variant="danger"
+                                                onClick={() => setShowDeleteConfirm(true)}
+                                                title="Delete this draft"
+                                            >
+                                                <Trash2 size={14} /> Delete Draft
+                                            </ActionButton>
+                                        )}
+                                    </>
+                                )}
+                                {!isEditable && !isHOD && existingData && (
+                                    <span className="action-label">
+                                        {isApproved
+                                            ? 'Approved ✓'
+                                            : isSubmitted
+                                                ? 'Awaiting Review'
+                                                : 'Read Only'}
+                                    </span>
+                                )}
+                                {isHOD && <span className="action-label">View Only</span>}
+                                {isSuperAdmin && existingData && (
+                                    <ActionButton
+                                        variant="danger"
+                                        onClick={() => {
+                                            if (window.confirm('Are you sure you want to delete this activity?')) {
+                                                onDelete(existingData.activity_id);
+                                            }
+                                        }}
+                                        title="Delete this activity"
+                                    >
+                                        <Trash2 size={14} /> Delete
+                                    </ActionButton>
+                                )}
+                            </>
+                        ) : null}
                     </>
-                ) : null}
+                )}
             </div>
+            {/* Delete Draft Confirmation Modal */}
+            {showDeleteConfirm && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+                    zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div style={{
+                        background: '#fff', borderRadius: 12, padding: '28px 32px',
+                        maxWidth: 420, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                            <Trash2 size={20} style={{ color: '#ef4444' }} />
+                            <strong style={{ fontSize: '1rem', color: '#111' }}>Delete Draft?</strong>
+                        </div>
+                        <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: 20 }}>
+                            Are you sure you want to delete this draft? This action cannot be undone.
+                        </p>
+                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                            <button
+                                style={{
+                                    padding: '8px 18px', borderRadius: 7, border: '1px solid #d1d5db',
+                                    background: '#f9fafb', cursor: 'pointer', fontSize: '0.875rem'
+                                }}
+                                onClick={() => setShowDeleteConfirm(false)}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                style={{
+                                    padding: '8px 18px', borderRadius: 7, border: 'none',
+                                    background: '#ef4444', color: '#fff', cursor: 'pointer',
+                                    fontSize: '0.875rem', fontWeight: 600
+                                }}
+                                onClick={() => {
+                                    setShowDeleteConfirm(false);
+                                    onDelete && onDelete(existingData.activity_id);
+                                }}
+                            >
+                                Yes, Delete Draft
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Bulk Entry Modals ─────────────────────────────────── */}
+            {showExcelModal && (
+                <ExcelImportModal
+                    parameterId={parameter.parameter_id}
+                    parameterName={parameter.parameter_name}
+                    academicYearId={academicYearId}
+                    campusId={campusId}
+                    departmentId={departmentId}
+                    documents={config.documents || []}
+                    onClose={() => setShowExcelModal(false)}
+                    onComplete={handleBulkComplete}
+                />
+            )}
+
+            {showOutgoingStudentsModal && (
+                <OutgoingStudentsImportModal
+                    parameterId={parameter.parameter_id}
+                    parameterName={parameter.parameter_name}
+                    academicYearId={academicYearId}
+                    campusId={campusId}
+                    departmentId={departmentId}
+                    onClose={() => setShowOutgoingStudentsModal(false)}
+                    onComplete={handleBulkComplete}
+                />
+            )}
+
+            {showDynamicModal && (
+                <DynamicMultiEntryModal
+                    parameter={parameter}
+                    parameterId={parameter.parameter_id}
+                    parameterName={parameter.parameter_name}
+                    academicYearId={academicYearId}
+                    campusId={campusId}
+                    departmentId={departmentId}
+                    universities={universities}
+                    onClose={() => setShowDynamicModal(false)}
+                    onComplete={handleBulkComplete}
+                />
+            )}
         </div>
     );
 };

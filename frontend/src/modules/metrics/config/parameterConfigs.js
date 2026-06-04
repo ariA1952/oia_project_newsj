@@ -86,9 +86,9 @@ export const PARAMETER_CONFIGS = [
     multiRow: true,
     fields: [
       { id: 'theme',                label: 'Conference Theme / Topic',        type: 'text', required: true },
-      { id: 'partner_universities', label: 'Partner Universities / Org.',     type: 'multi-uni' },
-      { id: 'start_date',           label: 'Start Date',                      type: 'date'      },
-      { id: 'end_date',             label: 'End Date',                        type: 'date'      },
+      { id: 'partner_universities', label: 'Partner Universities / Org.',     type: 'multi-uni', required: true },
+      { id: 'start_date',           label: 'Start Date',                      type: 'date', required: true },
+      { id: 'end_date',             label: 'End Date',                        type: 'date', required: true },
     ],
     documents: ['Flyer', 'Event Report'],
   },
@@ -99,8 +99,9 @@ export const PARAMETER_CONFIGS = [
     label: 'Curriculum Internationalization',
     multiRow: false,
     fields: [
-      { id: 'impact',               label: 'Curriculum Impact',               type: 'textarea'  },
-      { id: 'partner_universities', label: 'Partner Universities / Org.',     type: 'multi-uni' },
+      { id: 'start_date',           label: 'Month/Year',                      type: 'month', required: true },
+      { id: 'impact',               label: 'Curriculum Impact',               type: 'textarea', required: true },
+      { id: 'partner_universities', label: 'Partner Universities / Org.',     type: 'multi-uni', required: true },
       { id: 'type',                 label: 'Type',                            type: 'select', required: true,
         options: [
           'Certificate Program',
@@ -118,7 +119,7 @@ export const PARAMETER_CONFIGS = [
     multiRow: true,
     fields: [
       { id: 'event_name',           label: 'Event / Project Name',            type: 'text', required: true },
-      { id: 'start_date',           label: 'Month of Event',                  type: 'month'     },
+      { id: 'start_date',           label: 'Month of Event',                  type: 'month', required: true },
       { id: 'sdg_goal',             label: 'SDG Goal',                        type: 'select', required: true,
         options: Array.from({ length: 17 }, (_, i) => `Goal ${i + 1} – SDG ${i + 1}`) },
     ],
@@ -132,9 +133,9 @@ export const PARAMETER_CONFIGS = [
     multiRow: true,
     fields: [
       { id: 'body_name',            label: 'Collaborating Professional Body', type: 'text', required: true },
-      { id: 'start_date',           label: 'Month of Collaboration',          type: 'month'     },
-      { id: 'country',              label: 'Country',                         type: 'country'   },
-      { id: 'key_achievements',     label: 'Key Achievements',                type: 'textarea'  },
+      { id: 'start_date',           label: 'Month of Collaboration',          type: 'month', required: true },
+      { id: 'country',              label: 'Country',                         type: 'country', required: true },
+      { id: 'key_achievements',     label: 'Key Achievements',                type: 'textarea', required: true },
     ],
     documents: ['Flyer / Poster', 'Report'],
   },
@@ -145,11 +146,11 @@ export const PARAMETER_CONFIGS = [
     label: 'Online Teaching – International Webinars',
     multiRow: true,
     fields: [
-      { id: 'partner_universities', label: 'Partner Universities / Org.',     type: 'multi-uni' },
-      { id: 'country',              label: 'Country',                         type: 'country'   },
+      { id: 'partner_universities', label: 'Partner Universities / Org.',     type: 'multi-uni', required: true },
+      { id: 'country',              label: 'Country',                         type: 'country', required: true },
       { id: 'webinar_topic',        label: 'Webinar Topic',                   type: 'text', required: true },
-      { id: 'speaker',              label: 'Speaker',                         type: 'text'      },
-      { id: 'start_date',           label: 'Date (Organised On)',             type: 'date'      },
+      { id: 'speaker',              label: 'Speaker',                         type: 'text', required: true },
+      { id: 'start_date',           label: 'Date (Organised On)',             type: 'date', required: true },
     ],
     documents: ['Flyer', 'List of Attendees'],
   },
@@ -291,6 +292,20 @@ export const PARAMETER_CONFIGS = [
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Fallback config for parameters not yet in the config file. */
+export const FALLBACK_CONFIG = {
+  label: 'General Activity',
+  multiRow: true,
+  adminOnly: false,
+  fields: [
+    { id: 'partner_universities', label: 'Partner Universities / Org.', type: 'multi-uni' },
+    { id: 'start_date', label: 'Start Date', type: 'date' },
+    { id: 'end_date', label: 'End Date', type: 'date' },
+    { id: 'remarks', label: 'Remarks / Notes', type: 'textarea' },
+  ],
+  documents: ['Report', 'Other'],
+};
+
 /** Match a DB parameter object to its config (first substring match wins). */
 export const getParamConfig = (parameter) => {
   if (!parameter?.parameter_name) return null;
@@ -319,9 +334,12 @@ export const makeEmptyRowForConfig = (config) => ({
       .filter((f) => !TOP_LEVEL.has(f.id))
       .map((f) => [f.id, ''])
   ),
-  documents: {},        // { docKey: File[] }  — new files to upload
+  documents: {},         // { docKey: File[] }  — new files to upload
   existingDocuments: {}, // { docKey: string[] } — paths already on server
+  otherDocuments: [],    // [{ title: string, file: File|null }] — new other docs
+  otherDocsMetadata: {}, // { docKey: string } — mapping of other_document_X to custom title
 });
+
 
 /** Deserialise activity_data.rows (from DB JSON) into RowCard state. */
 export const rowsFromActivityData = (activityData, config) => {
@@ -335,10 +353,13 @@ export const rowsFromActivityData = (activityData, config) => {
       fields: r.fields ?? {},
       documents: {},
       existingDocuments: r.documents ?? {},
+      otherDocuments: [],  // new-session other docs always start empty; saved ones show via existingDocuments
+      otherDocsMetadata: r.other_docs_metadata ?? {},
     }));
   }
   return config ? [makeEmptyRowForConfig(config)] : [];
 };
+
 
 /** Read a field value from row state (top-level or nested). */
 export const getRowFieldValue = (row, fieldId) =>

@@ -79,14 +79,15 @@ const DocItem = ({ label, paths, onViewDoc, activityId, rowIndex, dk }) => {
 const ActivityRows = ({ activity, config, universities, onViewDoc }) => {
     const rows = activity.activity_data?.rows ?? [];
 
-    const getUniNames = (ids) =>
-        (Array.isArray(ids) ? ids : [])
-            .map(
-                (id) =>
-                    universities.find((u) => String(u.university_id) === String(id))
-                        ?.university_name ?? `University #${id}`
-            )
+    const getUniNames = (ids) => {
+        const arr = Array.isArray(ids) ? ids : (typeof ids === 'string' ? ids.split(',') : []);
+        return arr
+            .map((id) => {
+                const cleanedId = String(id).trim();
+                return universities.find((u) => String(u.university_id) === cleanedId)?.university_name ?? `University #${cleanedId}`;
+            })
             .join(', ') || '—';
+    };
 
     const allFields = config?.fields ?? [];
     const docSlots = config?.documents ?? [];

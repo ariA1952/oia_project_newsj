@@ -1,0 +1,644 @@
+/* ── ExcelImportModal Styles ────────────────────────────────────────────────── */
+
+.excel-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: excelOverlayIn 0.2s ease;
+}
+
+@keyframes excelOverlayIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.excel-modal {
+    width: 100%;
+    max-width: 900px;
+    max-height: 90vh;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
+    display: flex;
+    flex-direction: column;
+    animation: excelModalIn 0.25s ease;
+    overflow: hidden;
+}
+
+@keyframes excelModalIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Header ── */
+.excel-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+}
+
+.excel-modal__header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #0369a1;
+}
+
+.excel-modal__header-left h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0c4a6e;
+    margin: 0;
+}
+
+.excel-modal__close {
+    background: none;
+    border: none;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #64748b;
+    transition: all 0.15s;
+}
+
+.excel-modal__close:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+/* ── Step Indicator ── */
+.excel-modal__steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 16px 24px;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fafbfc;
+}
+
+.excel-modal__step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    transition: all 0.2s;
+}
+
+.excel-modal__step.active {
+    color: #2563eb;
+    font-weight: 600;
+}
+
+.excel-modal__step.done {
+    color: #059669;
+}
+
+.excel-modal__step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.excel-modal__step.active .excel-modal__step-num {
+    background: #2563eb;
+    color: #fff;
+}
+
+.excel-modal__step.done .excel-modal__step-num {
+    background: #059669;
+    color: #fff;
+}
+
+.excel-modal__step-arrow {
+    color: #cbd5e1;
+    margin: 0 4px;
+}
+
+/* ── Body ── */
+.excel-modal__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+/* Error */
+.excel-modal__error {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    color: #dc2626;
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+}
+
+/* ── Upload Step ── */
+.excel-modal__upload-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.excel-modal__dropzone {
+    width: 100%;
+    min-height: 200px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #fafbfc;
+}
+
+.excel-modal__dropzone:hover,
+.excel-modal__dropzone--active {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.excel-modal__dropzone--has-file {
+    border-color: #059669;
+    background: #f0fdf4;
+}
+
+.excel-modal__dropzone-content {
+    text-align: center;
+    padding: 30px;
+}
+
+.excel-modal__dropzone-icon {
+    color: #94a3b8;
+    margin-bottom: 12px;
+}
+
+.excel-modal__dropzone-text {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #334155;
+    margin: 0 0 6px;
+}
+
+.excel-modal__dropzone-hint {
+    font-size: 0.82rem;
+    color: #94a3b8;
+    margin: 0;
+}
+
+.excel-modal__file-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 24px;
+}
+
+.excel-modal__file-icon {
+    color: #059669;
+}
+
+.excel-modal__file-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.excel-modal__file-size {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.excel-modal__file-remove {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.excel-modal__file-remove:hover {
+    background: #fee2e2;
+}
+
+.excel-modal__template-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #059669;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.excel-modal__template-btn:hover {
+    background: #dcfce7;
+    border-color: #86efac;
+}
+
+/* ── Validation Step ── */
+.excel-modal__validate-step {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.excel-modal__summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.excel-modal__summary-card {
+    text-align: center;
+    padding: 16px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.excel-modal__summary-card--success { background: #f0fdf4; border-color: #bbf7d0; }
+.excel-modal__summary-card--error { background: #fef2f2; border-color: #fecaca; }
+.excel-modal__summary-card--warning { background: #fffbeb; border-color: #fde68a; }
+
+.excel-modal__summary-value {
+    display: block;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+
+.excel-modal__summary-card--success .excel-modal__summary-value { color: #059669; }
+.excel-modal__summary-card--error .excel-modal__summary-value { color: #dc2626; }
+.excel-modal__summary-card--warning .excel-modal__summary-value { color: #d97706; }
+
+.excel-modal__summary-label {
+    font-size: 0.78rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* Error section */
+.excel-modal__error-section {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.excel-modal__error-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid #fecaca;
+}
+
+.excel-modal__error-header h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 0.85rem;
+    color: #dc2626;
+}
+
+.excel-modal__error-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    color: #dc2626;
+    background: #fff;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.excel-modal__error-table-wrapper {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.excel-modal__error-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.excel-modal__error-table th {
+    background: #fee2e2;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #991b1b;
+    position: sticky;
+    top: 0;
+}
+
+.excel-modal__error-table td {
+    padding: 6px 12px;
+    border-top: 1px solid #fecaca;
+    color: #7f1d1d;
+}
+
+/* Preview */
+.excel-modal__preview h4 {
+    margin: 0 0 10px;
+    font-size: 0.9rem;
+    color: #334155;
+}
+
+.excel-modal__preview-table-wrapper {
+    max-height: 300px;
+    overflow: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+
+.excel-modal__preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.excel-modal__preview-table th {
+    background: #f1f5f9;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #475569;
+    position: sticky;
+    top: 0;
+}
+
+.excel-modal__preview-table td {
+    padding: 6px 12px;
+    border-top: 1px solid #f1f5f9;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.excel-modal__row--invalid {
+    background: #fef2f2;
+}
+
+.excel-modal__row--warning {
+    background: #fffbeb;
+}
+
+.excel-modal__icon--valid { color: #059669; }
+.excel-modal__icon--invalid { color: #dc2626; }
+
+/* ── Document Upload Step ── */
+.excel-modal__docs-step {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.excel-modal__docs-intro {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    color: #166534;
+}
+
+.excel-modal__doc-progress {
+    padding: 10px 16px;
+    background: #eff6ff;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    color: #1d4ed8;
+    font-weight: 500;
+}
+
+.excel-modal__docs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.excel-modal__doc-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.excel-modal__doc-card-header {
+    padding: 10px 16px;
+    background: #f8fafc;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #334155;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.excel-modal__doc-card-body {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.excel-modal__doc-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.excel-modal__doc-slot--other {
+    border-top: 1px dashed #e2e8f0;
+    padding-top: 10px;
+    margin-top: 4px;
+}
+
+.excel-modal__doc-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.excel-modal__doc-upload-area input[type="file"] {
+    font-size: 0.78rem;
+}
+
+.excel-modal__other-doc-title {
+    padding: 6px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    outline: none;
+}
+
+.excel-modal__other-doc-title:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.excel-modal__doc-file-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.excel-modal__doc-file-list li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: #475569;
+}
+
+.excel-modal__doc-file-list button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #dc2626;
+    padding: 2px;
+    margin-left: auto;
+}
+
+/* ── Complete Step ── */
+.excel-modal__complete-step {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.excel-modal__complete-icon {
+    color: #059669;
+    margin-bottom: 16px;
+}
+
+.excel-modal__complete-step h3 {
+    font-size: 1.3rem;
+    color: #1e293b;
+    margin: 0 0 10px;
+}
+
+.excel-modal__complete-step p {
+    font-size: 0.9rem;
+    color: #475569;
+    margin: 0 0 6px;
+}
+
+.excel-modal__complete-hint {
+    color: #94a3b8 !important;
+    font-size: 0.82rem !important;
+}
+
+/* ── Footer ── */
+.excel-modal__footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid #e2e8f0;
+    background: #fafbfc;
+}
+
+.excel-modal__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.excel-modal__btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.excel-modal__btn--primary {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.excel-modal__btn--primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.excel-modal__btn--secondary {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.excel-modal__btn--secondary:hover {
+    background: #e2e8f0;
+}
+
+.excel-modal__spinner {
+    animation: excelSpin 1s linear infinite;
+}
+
+@keyframes excelSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+    .excel-modal__summary {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .excel-modal__steps {
+        flex-wrap: wrap;
+    }
+}

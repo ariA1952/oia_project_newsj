@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = 'http://localhost:8000';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -504,9 +504,47 @@ export const updateMOU = async (id, data) => {
     if (data.status) formData.append('status', data.status);
     if (data.document instanceof File) formData.append('document', data.document);
 
+    // Other documents metadata
+    if (data.other_documents_metadata) {
+      formData.append('other_documents_metadata', data.other_documents_metadata);
+    }
+    // Dynamic supporting files
+    Object.entries(data).forEach(([key, value]) => {
+      if (key.startsWith('other_file_') && value) {
+        formData.append(key, value);
+      }
+    });
+
     const response = await apiClient.put(`/mou/${id}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Download an MOU Other Document with auth via header, returns a temporary Blob URL.
+ */
+export const downloadMOUOtherDocument = async (id, fileIndex) => {
+  try {
+    const response = await apiClient.get(
+      `/mou/${id}/other-document/${fileIndex}`,
+      { responseType: 'blob' }
+    );
+    return URL.createObjectURL(response.data);
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Fetch detailed other documents list for a specific MOU.
+ */
+export const getMOUOtherDocuments = async (mouId) => {
+  try {
+    const response = await apiClient.get(`/mou/${mouId}/other-documents`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -609,6 +647,98 @@ export const login = async (userId, password) => {
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
+  }
+};
+
+// ─── Bulk Operations APIs ──────────────────────────────────────────────────────
+
+/**
+ * Download an Excel template for a given parameter.
+ * Returns a blob URL that can be used for download.
+ */
+export const downloadBulkTemplate = async (parameterId) => {
+  try {
+    const response = await apiClient.get(`/bulk/template/${parameterId}`, {
+      responseType: 'blob',
+    });
+    return URL.createObjectURL(response.data);
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Validate an uploaded Excel file against parameter rules.
+ * @param {File} file - The Excel file
+ * @param {number} parameterId
+ * @param {number} academicYearId
+ */
+export const validateBulkUpload = async (file, parameterId, academicYearId) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('parameter_id', parameterId);
+    formData.append('erp_academic_year_id', academicYearId);
+    const response = await apiClient.post('/bulk/validate', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Save pre-validated bulk rows.
+ */
+export const saveBulkEntries = async (data) => {
+  try {
+    const response = await apiClient.post('/bulk/save', data);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Submit dynamic multi-entry payload.
+ */
+export const submitDynamicMultiEntry = async (data) => {
+  try {
+    const response = await apiClient.post('/bulk/multi-entry', data);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Get field configuration for a parameter.
+ */
+export const getFieldConfig = async (parameterId) => {
+  try {
+    const response = await apiClient.get(`/bulk/field-config/${parameterId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Upload a document for a bulk-created activity.
+ */
+export const uploadBulkDocument = async (activityId, docType, rowIndex, file) => {
+  try {
+    const formData = new FormData();
+    formData.append('doc_type', docType);
+    formData.append('row_index', String(rowIndex));
+    formData.append('file', file);
+    const response = await apiClient.post(`/bulk/upload-documents/${activityId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
   }
 };
 

@@ -59,9 +59,9 @@ const LoginPage = () => {
                     <div className="form-group">
                         <label htmlFor="userId">User ID</label>
                         <input
-                            type="number"
+                            type="text"
                             id="userId"
-                            placeholder="Enter your Employee ID"
+                            placeholder="Enter your User ID or Email"
                             value={userId}
                             onChange={(e) => setUserId(e.target.value)}
                             disabled={loading}
@@ -98,7 +98,7 @@ const LoginPage = () => {
                 </form>
 
                 <div className="login-footer">
-                    <p>© 2024 International Office. All rights reserved.</p>
+                    <p>© 2026 International Office. All rights reserved.</p>
                 </div>
             </div>
 

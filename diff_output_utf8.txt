@@ -1,0 +1,803 @@
+﻿diff --git a/frontend/src/modules/metrics/components/ActivityDetailsPopup.jsx b/intr_frontend/src/modules/metrics/components/ActivityDetailsPopup.jsx
+index 5e3e56a..35d0882 100644
+--- a/frontend/src/modules/metrics/components/ActivityDetailsPopup.jsx
++++ b/intr_frontend/src/modules/metrics/components/ActivityDetailsPopup.jsx
+@@ -212,16 +212,13 @@ const ActivityDetailsPopup = memo(({
+ 
+     if (!activity) return null;
+ 
+-    const { universities = [], campuses = [], departments = [], mappings = [] } = masterData;
++    const { universities = [], campuses = [], departments = [] } = masterData;
+ 
+     const isAdmin = ADMIN_ROLES.includes(userRole);
+     const elevated = ELEVATED.includes(userRole);
+ 
+-    const mapping = mappings.find(
+-        (m) => String(m.erp_campus_department_mapping_id) === String(activity.erp_campus_department_mapping_id)
+-    );
+-    const campus = campuses.find((c) => c.erp_campus_id === mapping?.campus_id);
+-    const department = departments.find((d) => d.erp_department_id === mapping?.dept_id);
++    const campus = campuses.find((c) => String(c.erp_campus_id) === String(activity.campus_id));
++    const department = departments.find((d) => String(d.erp_department_id) === String(activity.department_id));
+ 
+     const approvedById = activity.approved_user_id;
+     const approvedAt = activity.approved_time
+@@ -271,8 +268,8 @@ const ActivityDetailsPopup = memo(({
+                         <Field label="Faculty ID" value={`#${activity.created_user_id ?? 'ΓÇö'}`} icon={User} />
+                         {elevated && (
+                             <>
+-                                <Field label="Department" value={department?.department_name ?? (mapping?.dept_id ? `Dept #${mapping.dept_id}` : null)} icon={BookOpen} />
+-                                <Field label="Campus" value={campus?.campus_name ?? (mapping?.campus_id ? `Campus #${mapping.campus_id}` : null)} icon={MapPin} />
++                                <Field label="Department" value={department?.label || department?.department_name || activity.department_name || (activity.department_id ? `Dept #${activity.department_id}` : null)} icon={BookOpen} />
++                                <Field label="Campus" value={campus?.label || campus?.campus_name || activity.campus_name || (activity.campus_id ? `Campus #${activity.campus_id}` : null)} icon={MapPin} />
+                             </>
+                         )}
+                         <Field label="Academic Year" value={activity.erp_academic_year_id ? `Year #${activity.erp_academic_year_id}` : null} icon={Calendar} />
+@@ -290,7 +287,7 @@ const ActivityDetailsPopup = memo(({
+                             <Field label="Approved By" value={approverLabel} icon={Shield} />
+                             <Field label="Approval Date" value={approvedAt} icon={Clock} />
+                             {isAdmin && (
+-                                <Field label="Approval Campus" value={campus?.campus_name ?? (mapping?.campus_id ? `Campus #${mapping.campus_id}` : null)} icon={Building2} />
++                                <Field label="Approval Campus" value={campus?.label || campus?.campus_name || activity.campus_name || (activity.campus_id ? `Campus #${activity.campus_id}` : null)} icon={Building2} />
+                             )}
+                         </Section>
+                     )}
+diff --git a/frontend/src/modules/metrics/components/FilterBar.jsx b/intr_frontend/src/modules/metrics/components/FilterBar.jsx
+index eab18d4..77aecbf 100644
+--- a/frontend/src/modules/metrics/components/FilterBar.jsx
++++ b/intr_frontend/src/modules/metrics/components/FilterBar.jsx
+@@ -1,10 +1,46 @@
++import { useEffect, useState } from 'react';
++import { getDepartments } from '../services/metricsService';
+ import './FilterBar.css';
+ 
+ const FilterBar = ({ filters, onChange, masterData, loading, hiddenFilters = [] }) => {
++    const [departmentOptions, setDepartmentOptions] = useState([]);
++
+     const handleChange = (key, value) => {
+         onChange({ ...filters, [key]: value });
+     };
+ 
++    useEffect(() => {
++        if (filters.academic_year_id) return;
++        const currentYear = masterData.academicYears?.find((year) => year.isCurrentAcademicYear);
++        if (!currentYear?.erp_academic_year_id) return;
++        onChange({ ...filters, academic_year_id: String(currentYear.erp_academic_year_id) });
++    }, [filters, onChange, masterData.academicYears]);
++
++    useEffect(() => {
++        if (!filters.campus_id) {
++            setDepartmentOptions([]);
++            if (filters.department_id) {
++                onChange({ ...filters, department_id: '' });
++            }
++            return;
++        }
++
++        let active = true;
++        getDepartments(filters.campus_id)
++            .then((data) => {
++                if (!active) return;
++                setDepartmentOptions(Array.isArray(data) ? data : []);
++            })
++            .catch(() => {
++                if (!active) return;
++                setDepartmentOptions([]);
++            });
++
++        return () => {
++            active = false;
++        };
++    }, [filters.campus_id, filters.department_id, onChange]);
++
+     return (
+         <div className="filter-bar">
+             <div className="filter-bar__group">
+@@ -18,7 +54,7 @@ const FilterBar = ({ filters, onChange, masterData, loading, hiddenFilters = []
+                     <option value="">All Academic Years</option>
+                     {masterData.academicYears.map((year) => (
+                         <option key={year.erp_academic_year_id} value={year.erp_academic_year_id}>
+-                            {year.academic_year_name || year.academic_year}
++                            {year.label || year.academic_year_name || year.academic_year}
+                         </option>
+                     ))}
+                 </select>
+@@ -68,13 +104,13 @@ const FilterBar = ({ filters, onChange, masterData, loading, hiddenFilters = []
+                     <select
+                         className="filter-bar__select"
+                         value={filters.campus_id || ''}
+-                        onChange={(e) => handleChange('campus_id', e.target.value)}
++                        onChange={(e) => onChange({ ...filters, campus_id: e.target.value, department_id: '' })}
+                         disabled={loading}
+                     >
+-                        <option value="">All Campuses</option>
++                        <option value="">Select Campus</option>
+                         {masterData.campuses.map((campus) => (
+                             <option key={campus.erp_campus_id} value={campus.erp_campus_id}>
+-                                {campus.campus_name}
++                                {campus.label || campus.campus_name}
+                             </option>
+                         ))}
+                     </select>
+@@ -88,12 +124,12 @@ const FilterBar = ({ filters, onChange, masterData, loading, hiddenFilters = []
+                         className="filter-bar__select"
+                         value={filters.department_id || ''}
+                         onChange={(e) => handleChange('department_id', e.target.value)}
+-                        disabled={loading}
++                        disabled={loading || !filters.campus_id}
+                     >
+-                        <option value="">All Departments</option>
+-                        {masterData.departments.map((dept) => (
++                        <option value="">Select Department</option>
++                        {departmentOptions.map((dept) => (
+                             <option key={dept.erp_department_id} value={dept.erp_department_id}>
+-                                {dept.department_name}
++                                {dept.label || dept.department_name}
+                             </option>
+                         ))}
+                     </select>
+diff --git a/frontend/src/modules/metrics/components/ParameterRow.jsx b/intr_frontend/src/modules/metrics/components/ParameterRow.jsx
+index 0a9a6b0..d539aff 100644
+--- a/frontend/src/modules/metrics/components/ParameterRow.jsx
++++ b/intr_frontend/src/modules/metrics/components/ParameterRow.jsx
+@@ -552,8 +552,6 @@ const ParameterRow = ({
+     const [errors, setErrors] = useState([]);
+     const [duplicateWarnings, setDuplicateWarnings] = useState([]);
+ 
+-    const rowsJson = JSON.stringify(rows);
+-
+     // Debounced check for duplicates
+     useEffect(() => {
+         if (isHOD || isAdminLocked || !parameter?.parameter_id) {
+@@ -575,8 +573,6 @@ const ParameterRow = ({
+ 
+                 if (unis.length > 0 && sd && ed && sd <= ed) {
+                     for (const uid of unis) {
+-                        if (!parameter.parameter_id || !uid || !sd || !ed) continue;
+-
+                         promises.push(
+                             checkDuplicateActivity(parameter.parameter_id, uid, sd, ed, activityId)
+                                 .then(res => ({ res, uid }))
+@@ -613,8 +609,7 @@ const ParameterRow = ({
+         }, 500);
+ 
+         return () => clearTimeout(timer);
+-        // eslint-disable-next-line react-hooks/exhaustive-deps
+-    }, [rowsJson, parameter?.parameter_id, isEditing, isHOD, isAdminLocked, existingData?.activity_id, universities]);
++    }, [rows, parameter?.parameter_id, isEditing, isHOD, isAdminLocked, existingData?.activity_id, universities]);
+ 
+     // Sync state when existingData or config changes
+     useEffect(() => {
+@@ -677,9 +672,7 @@ const ParameterRow = ({
+                     start_date: row.start_date || null,
+                     end_date: row.end_date || null,
+                     fields: row.fields ?? {},
+-                    ...(row.existingDocuments && Object.keys(row.existingDocuments).length > 0
+-                        ? { documents: row.existingDocuments }
+-                        : {}),
++                    documents: row.existingDocuments ?? {},
+                 })),
+             },
+             rowFiles,
+diff --git a/frontend/src/modules/metrics/hooks/useMetricsMasterData.js b/intr_frontend/src/modules/metrics/hooks/useMetricsMasterData.js
+index 8823cfe..9e96d37 100644
+--- a/frontend/src/modules/metrics/hooks/useMetricsMasterData.js
++++ b/intr_frontend/src/modules/metrics/hooks/useMetricsMasterData.js
+@@ -2,10 +2,8 @@ import { useState, useEffect } from 'react';
+ import {
+     getAcademicYears,
+     getCampuses,
+-    getDepartments,
+     getParameters,
+     getPartnerUniversities,
+-    getCampusDeptMappings,
+ } from '../services/metricsService';
+ 
+ const useMetricsMasterData = () => {
+@@ -15,7 +13,6 @@ const useMetricsMasterData = () => {
+         departments: [],
+         parameters: [],
+         universities: [],
+-        mappings: [],
+     });
+ 
+     const [loading, setLoading] = useState(true);
+@@ -30,28 +27,23 @@ const useMetricsMasterData = () => {
+                 const [
+                     academicYears,
+                     campuses,
+-                    departments,
+                     parameters,
+                     universities,
+-                    mappings,
+                 ] = await Promise.all([
+                     getAcademicYears().catch(() => []),
+                     getCampuses().catch(() => []),
+-                    getDepartments().catch(() => []),
+                     getParameters().catch(() => []),
+                     // Only Active universities appear in dropdowns during data entry.
+                     // PENDING_REVIEW universities are excluded until MOU is formalised.
+                     getPartnerUniversities({ status: 'Active', skip: 0, limit: 1000 }).catch(() => []),
+-                    getCampusDeptMappings().catch(() => []),
+                 ]);
+ 
+                 setMasterData({
+                     academicYears,
+                     campuses,
+-                    departments,
++                    departments: [],
+                     parameters,
+                     universities,
+-                    mappings,
+                 });
+             } catch (err) {
+                 setError(err.message || 'Failed to fetch master data');
+@@ -71,26 +63,21 @@ const useMetricsMasterData = () => {
+             const [
+                 academicYears,
+                 campuses,
+-                departments,
+                 parameters,
+                 universities,
+-                mappings,
+             ] = await Promise.all([
+                 getAcademicYears().catch(() => []),
+                 getCampuses().catch(() => []),
+-                getDepartments().catch(() => []),
+                 getParameters().catch(() => []),
+                 getPartnerUniversities({ status: 'Active', skip: 0, limit: 1000 }).catch(() => []),
+-                getCampusDeptMappings().catch(() => []),
+             ]);
+ 
+             setMasterData({
+                 academicYears,
+                 campuses,
+-                departments,
++                departments: [],
+                 parameters,
+                 universities,
+-                mappings,
+             });
+         } catch (err) {
+             setError(err.message || 'Failed to refresh master data');
+diff --git a/frontend/src/modules/metrics/pages/DataEntry.jsx b/intr_frontend/src/modules/metrics/pages/DataEntry.jsx
+index 5047cbb..032ae04 100644
+--- a/frontend/src/modules/metrics/pages/DataEntry.jsx
++++ b/intr_frontend/src/modules/metrics/pages/DataEntry.jsx
+@@ -8,10 +8,13 @@ import { useAuth } from '../../../common/AuthContext';
+ import useMetricsMasterData from '../hooks/useMetricsMasterData';
+ import useUserProfile from '../hooks/useUserProfile';
+ import { getParamConfig } from '../config/parameterConfigs';
+-import apiClient, {
++import {
+     getCollaborationActivities,
++    createCollaborationActivity,
++    updateCollaborationActivity,
+     submitCollaborationActivity,
+     deleteCollaborationActivity,
++    getDepartments,
+ } from '../services/metricsService';
+ import './DataEntry.css';
+ 
+@@ -33,6 +36,7 @@ const DataEntry = () => {
+     const [notification, setNotification] = useState(null);
+     const [selectedParameterId, setSelectedParameterId] = useState(searchParams.get('edit_p_id') || '');
+     const [searchQuery, setSearchQuery] = useState('');
++    const [departmentOptions, setDepartmentOptions] = useState([]);
+ 
+     // If faculty/HOD, lock the mapping to their own
+     const mappingId = searchParams.get('m_id') || user?.erp_campus_department_mapping_id;
+@@ -40,13 +44,18 @@ const DataEntry = () => {
+     // Auto-set context from backend profile once loaded
+     useEffect(() => {
+         if (profileLoading) return;
++        const flaggedCurrentAcademicYear = masterData.academicYears?.find((year) => year.isCurrentAcademicYear);
+         setContext(prev => ({
+             ...prev,
+-            academic_year_id: prev.academic_year_id || (profile.current_academic_year_id ? String(profile.current_academic_year_id) : ''),
+-            campus_id: prev.campus_id || (profile.campus_id ? String(profile.campus_id) : ''),
++            academic_year_id:
++                prev.academic_year_id ||
++                (profile.current_academic_year_id
++                    ? String(profile.current_academic_year_id)
++                    : (flaggedCurrentAcademicYear?.erp_academic_year_id ? String(flaggedCurrentAcademicYear.erp_academic_year_id) : '')),
++            campus_id: prev.campus_id,
+             department_id: prev.department_id || (profile.dept_id ? String(profile.dept_id) : ''),
+         }));
+-    }, [profileLoading]);
++    }, [profileLoading, profile.current_academic_year_id, profile.dept_id, masterData.academicYears]);
+ 
+     useEffect(() => {
+         if (mappingId || (context.campus_id && context.department_id)) {
+@@ -59,6 +68,31 @@ const DataEntry = () => {
+         }
+     }, [mappingId, context.academic_year_id, context.campus_id, context.department_id]);
+ 
++    useEffect(() => {
++        if (!context.campus_id) {
++            setDepartmentOptions([]);
++            if (context.department_id) {
++                setContext((prev) => ({ ...prev, department_id: '' }));
++            }
++            return;
++        }
++
++        let active = true;
++        getDepartments(context.campus_id)
++            .then((data) => {
++                if (!active) return;
++                setDepartmentOptions(Array.isArray(data) ? data : []);
++            })
++            .catch(() => {
++                if (!active) return;
++                setDepartmentOptions([]);
++            });
++
++        return () => {
++            active = false;
++        };
++    }, [context.campus_id, context.department_id]);
++
+     const fetchExistingActivities = async () => {
+         if (!context.academic_year_id) {
+             setExistingActivities({});
+@@ -102,59 +136,27 @@ const DataEntry = () => {
+     const handleSaveActivity = async (activityData, activityId = null) => {
+         if (!validateContext()) return;
+ 
+-        const formData = new FormData();
+-        
+-        formData.append('parameter_id', activityData.parameter_id);
+-        
+-        if (activityData.activity_title) {
+-            formData.append('activity_title', activityData.activity_title);
+-        }
+-        
+-        if (activityData.activity_data) {
+-            formData.append('activity_data', JSON.stringify(activityData.activity_data));
+-        }
+-
+-        if (context.campus_id) {
+-            formData.append('campus_id', parseInt(context.campus_id));
+-        }
+-        
+-        if (context.academic_year_id) {
+-            formData.append('erp_academic_year_id', parseInt(context.academic_year_id));
+-        }
+-
+-        if (Array.isArray(activityData.rowFiles)) {
+-            activityData.rowFiles.forEach(({ rowIndex, docType, file }) => {
+-                if (file) {
+-                    formData.append(`file_${rowIndex}_${docType}`, file);
+-                }
+-            });
+-        }
++        const payload = {
++            parameter_id: activityData.parameter_id,
++            activity_title: activityData.activity_title || undefined,
++            activity_data: activityData.activity_data || undefined,
++            rowFiles: activityData.rowFiles || [],
++            campus_id: context.campus_id ? parseInt(context.campus_id) : undefined,
++            erp_academic_year_id: parseInt(context.academic_year_id),
++        };
+ 
+         try {
+             if (activityId) {
+-                await apiClient.put(`/collaboration-activity/${activityId}`, formData, {
+-                    headers: { 'Content-Type': 'multipart/form-data' }
+-                });
++                await updateCollaborationActivity(activityId, payload);
+                 setNotification({ message: 'Entry updated successfully', type: 'success' });
+             } else {
+-                await apiClient.post('/collaboration-activity', formData, {
+-                    headers: { 'Content-Type': 'multipart/form-data' }
+-                });
++                await createCollaborationActivity(payload);
+                 setNotification({ message: 'Entry created successfully', type: 'success' });
+             }
+             fetchExistingActivities();
+         } catch (error) {
+-            let errorMsg = error.detail || 'Failed to save activity';
+-            const serverError = error.response?.data?.detail;
+-            if (Array.isArray(serverError)) {
+-                errorMsg = serverError.map(err => `${err.loc.join('.')}: ${err.msg}`).join(', ');
+-            } else if (serverError) {
+-                errorMsg = serverError;
+-            } else if (error.response?.data?.message) {
+-                errorMsg = error.response?.data?.message;
+-            }
+             setNotification({
+-                message: errorMsg,
++                message: error.detail || 'Failed to save activity',
+                 type: 'error',
+             });
+         }
+@@ -271,7 +273,7 @@ const DataEntry = () => {
+                             <option value="">Select Academic Year</option>
+                             {masterData.academicYears.map((year) => (
+                                 <option key={year.erp_academic_year_id} value={year.erp_academic_year_id}>
+-                                    {year.academic_year_name || year.academic_year}
++                                    {year.label || year.academic_year_name || year.academic_year}
+                                 </option>
+                             ))}
+                         </select>
+@@ -286,12 +288,12 @@ const DataEntry = () => {
+                                 <select
+                                     className="data-entry__select"
+                                     value={context.campus_id}
+-                                    onChange={(e) => handleContextChange('campus_id', e.target.value)}
++                                    onChange={(e) => setContext((prev) => ({ ...prev, campus_id: e.target.value, department_id: '' }))}
+                                 >
+                                     <option value="">Select Campus</option>
+                                     {masterData.campuses.map((campus) => (
+                                         <option key={campus.erp_campus_id} value={campus.erp_campus_id}>
+-                                            {campus.campus_name}
++                                            {campus.label || campus.campus_name}
+                                         </option>
+                                     ))}
+                                 </select>
+@@ -303,11 +305,12 @@ const DataEntry = () => {
+                                     className="data-entry__select"
+                                     value={context.department_id}
+                                     onChange={(e) => handleContextChange('department_id', e.target.value)}
++                                    disabled={!context.campus_id}
+                                 >
+                                     <option value="">Select Department</option>
+-                                    {masterData.departments.map((dept) => (
++                                    {departmentOptions.map((dept) => (
+                                         <option key={dept.erp_department_id} value={dept.erp_department_id}>
+-                                            {dept.department_name}
++                                            {dept.label || dept.department_name}
+                                         </option>
+                                     ))}
+                                 </select>
+diff --git a/frontend/src/modules/metrics/pages/MOU.jsx b/intr_frontend/src/modules/metrics/pages/MOU.jsx
+index 6df5534..bcb5999 100644
+--- a/frontend/src/modules/metrics/pages/MOU.jsx
++++ b/intr_frontend/src/modules/metrics/pages/MOU.jsx
+@@ -92,7 +92,11 @@ const MOU = () => {
+     const getUniversityName = (mou) =>
+         mou.university_name || masterData.universities.find(u => u.university_id === mou.university_id)?.university_name || `University #${mou.university_id}`;
+ 
++    const getCurrentAcademicYearId = () =>
++        masterData.academicYears.find((y) => y.isCurrentAcademicYear)?.erp_academic_year_id || '';
++
+     const getAcademicYearName = (id) =>
++        masterData.academicYears.find(y => y.erp_academic_year_id === id)?.label ||
+         masterData.academicYears.find(y => y.erp_academic_year_id === id)?.academic_year_name ||
+         masterData.academicYears.find(y => y.erp_academic_year_id === id)?.academic_year ||
+         `Year #${id}`;
+@@ -112,7 +116,10 @@ const MOU = () => {
+             });
+         } else {
+             setEditingMOU(null);
+-            setFormData(EMPTY_FORM);
++            setFormData({
++                ...EMPTY_FORM,
++                erp_academic_year_id: getCurrentAcademicYearId(),
++            });
+         }
+         setShowModal(true);
+     };
+@@ -397,7 +404,7 @@ const MOU = () => {
+                                         <option value="">Select Year</option>
+                                         {masterData.academicYears.map(y => (
+                                             <option key={y.erp_academic_year_id} value={y.erp_academic_year_id}>
+-                                                {y.academic_year_name || y.academic_year}
++                                                {y.label || y.academic_year_name || y.academic_year}
+                                             </option>
+                                         ))}
+                                     </select>
+@@ -491,4 +498,4 @@ const MOU = () => {
+     );
+ };
+ 
+-export default MOU;
+\ No newline at end of file
++export default MOU;
+diff --git a/frontend/src/modules/metrics/pages/Reports.jsx b/intr_frontend/src/modules/metrics/pages/Reports.jsx
+index 0de5e03..2fc99c7 100644
+--- a/frontend/src/modules/metrics/pages/Reports.jsx
++++ b/intr_frontend/src/modules/metrics/pages/Reports.jsx
+@@ -41,6 +41,7 @@ const Reports = () => {
+         departmentComparison: [],
+         heatmapData: [],
+         pieChartData: [],
++        heatmapDepartments: [],
+     });
+     const [pieChartTitle, setPieChartTitle] = useState('');
+ 
+@@ -51,14 +52,16 @@ const Reports = () => {
+         return param?.parameter_name || `Parameter ${paramId}`;
+     };
+ 
+-    const getDepartmentNameByMapping = (mapId) => {
+-        const mapping = masterData.mappings?.find(
+-            (m) => m.erp_campus_department_mapping_id === mapId
+-        );
+-        if (!mapping) return `Dept (ID: ${mapId})`;
+-        const dept   = masterData.departments?.find((d) => d.erp_department_id === mapping.dept_id);
+-        const campus = masterData.campuses?.find((c) => c.erp_campus_id === mapping.campus_id);
+-        return `${dept?.department_name || `Dept ${mapping.dept_id}`} (${campus?.campus_name || `Campus ${mapping.campus_id}`})`;
++    const getDepartmentName = (departmentId, fallbackName = null) => {
++        if (fallbackName) return fallbackName;
++        const dept = masterData.departments?.find((d) => String(d.erp_department_id) === String(departmentId));
++        return dept?.label || dept?.department_name || (departmentId ? `Dept #${departmentId}` : 'Unknown Department');
++    };
++
++    const getCampusName = (campusId, fallbackName = null) => {
++        if (fallbackName) return fallbackName;
++        const campus = masterData.campuses?.find((c) => String(c.erp_campus_id) === String(campusId));
++        return campus?.label || campus?.campus_name || (campusId ? `Campus #${campusId}` : null);
+     };
+ 
+     // ΓöÇΓöÇ Data fetch ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+@@ -114,19 +117,43 @@ const Reports = () => {
+ 
+         const departmentComparison = Object.values(
+             data.reduce((acc, activity) => {
+-                const mapId = activity.erp_campus_department_mapping_id;
+-                if (!acc[mapId]) acc[mapId] = { mapping_id: mapId, department_name: getDepartmentNameByMapping(mapId), total: 0, count: 0 };
+-                acc[mapId].total += activity.numeric_value || 0;
+-                acc[mapId].count += 1;
++                const departmentId = activity.department_id ?? activity.erp_campus_department_mapping_id;
++                if (!departmentId) return acc;
++                const departmentName = getDepartmentName(departmentId, activity.department_name);
++                const campusName = getCampusName(activity.campus_id, activity.campus_name);
++                if (!acc[departmentId]) {
++                    acc[departmentId] = {
++                        department_id: departmentId,
++                        department_name: campusName ? `${departmentName} (${campusName})` : departmentName,
++                        total: 0,
++                        count: 0,
++                    };
++                }
++                acc[departmentId].total += activity.numeric_value || 0;
++                acc[departmentId].count += 1;
+                 return acc;
+             }, {})
+         );
+ 
+         const heatmapData = data.map((a) => ({
+             parameter_id: a.parameter_id,
+-            department_id: a.erp_campus_department_mapping_id,
++            department_id: a.department_id ?? a.erp_campus_department_mapping_id,
+             value: a.numeric_value || 0,
+-        }));
++        })).filter((d) => d.department_id);
++
++        const heatmapDepartments = Object.values(
++            data.reduce((acc, activity) => {
++                const departmentId = activity.department_id ?? activity.erp_campus_department_mapping_id;
++                if (!departmentId) return acc;
++                if (!acc[departmentId]) {
++                    acc[departmentId] = {
++                        erp_department_id: departmentId,
++                        department_name: getDepartmentName(departmentId, activity.department_name),
++                    };
++                }
++                return acc;
++            }, {})
++        );
+ 
+         const pieChartData = Object.values(
+             data.reduce((acc, activity) => {
+@@ -142,15 +169,15 @@ const Reports = () => {
+         let title = '';
+         if (filters.department_id) {
+             const dept = masterData.departments?.find((d) => String(d.erp_department_id) === String(filters.department_id));
+-            title = dept?.department_name || 'Selected Department';
++            title = dept?.label || dept?.department_name || `Department #${filters.department_id}`;
+         } else if (filters.campus_id) {
+             const campus = masterData.campuses?.find((c) => String(c.erp_campus_id) === String(filters.campus_id));
+-            title = campus?.campus_name || 'Selected Campus';
++            title = campus?.label || campus?.campus_name || 'Selected Campus';
+         } else {
+             title = 'All Campuses';
+         }
+         setPieChartTitle(title);
+-        setReportData({ parameterTotals, departmentComparison, heatmapData, pieChartData });
++        setReportData({ parameterTotals, departmentComparison, heatmapData, pieChartData, heatmapDepartments });
+     };
+ 
+     // ΓöÇΓöÇ Extra filters beyond academic year ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+@@ -164,10 +191,11 @@ const Reports = () => {
+         filters.university_id
+     );
+ 
++    const selectedAcademicYear = masterData.academicYears?.find(
++        (y) => String(y.erp_academic_year_id) === String(filters.academic_year_id)
++    );
+     const academicYearLabel = filters.academic_year_id
+-        ? masterData.academicYears?.find(
+-              (y) => String(y.erp_academic_year_id) === String(filters.academic_year_id)
+-          )?.academic_year_name ?? null
++        ? (selectedAcademicYear?.label || selectedAcademicYear?.academic_year_name || null)
+         : null;
+ 
+     // ΓöÇΓöÇ Download ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+@@ -263,7 +291,7 @@ const Reports = () => {
+                                     <h3 className="reports__section-title">Department Comparison</h3>
+                                     <div className="reports__table-container">
+                                         <table className="reports__table">
+-                                            <thead><tr><th>Department/Mapping</th><th>Total Value</th><th>Activity Count</th></tr></thead>
++                                            <thead><tr><th>Department</th><th>Total Value</th><th>Activity Count</th></tr></thead>
+                                             <tbody>
+                                                 {reportData.departmentComparison.map((item, i) => (
+                                                     <tr key={i}>
+@@ -295,7 +323,7 @@ const Reports = () => {
+                                 <HeatMap
+                                     data={reportData.heatmapData}
+                                     parameters={masterData.parameters}
+-                                    departments={masterData.departments}
++                                    departments={reportData.heatmapDepartments}
+                                 />
+                             </div>
+                         </>
+diff --git a/frontend/src/modules/metrics/pages/Review.jsx b/intr_frontend/src/modules/metrics/pages/Review.jsx
+index e84601a..4fffc7d 100644
+--- a/frontend/src/modules/metrics/pages/Review.jsx
++++ b/intr_frontend/src/modules/metrics/pages/Review.jsx
+@@ -494,14 +494,16 @@ const Review = () => {
+     // ΓöÇΓöÇΓöÇ Profile auto-fill ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+     useEffect(() => {
+         if (profileLoading) return;
++        const flaggedCurrentAcademicYear = masterData.academicYears?.find((year) => year.isCurrentAcademicYear);
+         setFilters((prev) => ({
+             ...prev,
+             academic_year_id: profile.current_academic_year_id
+-                ? String(profile.current_academic_year_id) : prev.academic_year_id,
+-            campus_id: profile.campus_id ? String(profile.campus_id) : prev.campus_id,
++                ? String(profile.current_academic_year_id)
++                : (prev.academic_year_id || (flaggedCurrentAcademicYear?.erp_academic_year_id ? String(flaggedCurrentAcademicYear.erp_academic_year_id) : '')),
++            campus_id: prev.campus_id,
+             department_id: profile.dept_id ? String(profile.dept_id) : prev.department_id,
+         }));
+-    }, [profileLoading]);
++    }, [profileLoading, profile.current_academic_year_id, profile.dept_id, masterData.academicYears]);
+ 
+     // ΓöÇΓöÇΓöÇ Data fetching ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+     useEffect(() => { refreshData(); }, [filters, mappingId]);
+diff --git a/frontend/src/modules/metrics/services/metricsService.js b/intr_frontend/src/modules/metrics/services/metricsService.js
+index 72226a1..75988db 100644
+--- a/frontend/src/modules/metrics/services/metricsService.js
++++ b/intr_frontend/src/modules/metrics/services/metricsService.js
+@@ -9,6 +9,10 @@ const apiClient = axios.create({
+   },
+ });
+ 
++const api_gateway = axios.create({
++    baseURL: 'http://localhost:8081',
++});
++
+ // Interceptor to add Token
+ apiClient.interceptors.request.use((config) => {
+   const token = localStorage.getItem('token');
+@@ -368,10 +372,6 @@ export const deleteCollaborationActivity = async (id) => {
+  * Checks if a duplicate activity exists with overlapping dates for a given parameter and university.
+  */
+ export const checkDuplicateActivity = async (parameter_id, university_id, start_date, end_date, activity_id = null) => {
+-  if (!parameter_id || !university_id || !start_date || !end_date) {
+-    return null;
+-  }
+-  
+   try {
+     const params = { parameter_id, university_id, start_date, end_date };
+     if (activity_id) params.activity_id = activity_id;
+@@ -519,8 +519,29 @@ export const updateMOU = async (id, data) => {
+ 
+ export const getAcademicYears = async () => {
+   try {
+-    const response = await apiClient.post('/academic-years', {});
+-    return response.data;
++    const response = await api_gateway.post('/Protected/Common/getAcademicYearNew', {}, {
++      headers: {
++        Authorization: 'Bearer eyJ6aXAiOiJERUYiLCJhbGciOiJIUzUxMiJ9.eJyrVnJJLElUslKqjlHKTIlRsopRsrQwi1HSiVHKS8xNBQs4e_p6-vr7KIQpeDk6-zvFKNUq6Sh5ugA1AZUCmX5AhUAOmjKgRHFpElxRZmKJkpWhubmZpZGxmZGxjlJqRQFUwNjCwMi4FgDrGiM7.sBRFTq2V0B6hM5H9ptiG0cirxVJ_Y1DjeMlNihnrYto8m6zeUX0_7BmqZFe2Z5pCN2hoDhjeeBwDDkCqpUjAyA',
++        __campus_ids: '2,4,1,5,6,3,7'
++      }
++    }
++    );
++    const years = Array.isArray(response.data) ? response.data : [];
++    return years.map((item) => {
++      const normalizedId = item?.erp_academic_year_id ?? item?.id ?? item?.value;
++      const numericId = Number.parseInt(normalizedId, 10);
++      const finalId = Number.isNaN(numericId) ? normalizedId : numericId;
++      const label = item?.label ?? item?.academicYearName ?? item?.academic_year_name ?? item?.academicYear ?? item?.academic_year;
++
++      return {
++        ...item,
++        erp_academic_year_id: finalId,
++        academic_year_name: label,
++        academic_year: label,
++        label,
++        isCurrentAcademicYear: Boolean(item?.isCurrentAcademicYear),
++      };
++    });
+   } catch (error) {
+     console.error('Failed to fetch academic years');
+     return [];
+@@ -531,8 +552,24 @@ export const getAcademicYears = async () => {
+ 
+ export const getCampuses = async () => {
+   try {
+-    const response = await apiClient.post('/campuses', {});
+-    return response.data;
++    const response = await api_gateway.post('/Protected/Common/getCampus', {}, {
++      headers: {
++        Authorization: 'Bearer eyJ6aXAiOiJERUYiLCJhbGciOiJIUzUxMiJ9.eJyrVnJJLElUslKqjlHKTIlRsopRsrQwi1HSiVHKS8xNBQs4e_p6-vr7KIQpeDk6-zvFKNUq6Sh5ugA1AZUCmX5AhUAOmjKgRHFpElxRZmKJkpWhubmZpZGxmZGxjlJqRQFUwNjCwMi4FgDrGiM7.sBRFTq2V0B6hM5H9ptiG0cirxVJ_Y1DjeMlNihnrYto8m6zeUX0_7BmqZFe2Z5pCN2hoDhjeeBwDDkCqpUjAyA',
++        __campus_ids: '2,4,1,5,6,3,7'
++      }
++    });
++
++    const campuses = Array.isArray(response.data?.dto) ? response.data.dto : [];
++    return campuses.map((item) => {
++      const numericId = Number.parseInt(item?.value, 10);
++      const finalId = Number.isNaN(numericId) ? item?.value : numericId;
++      return {
++        ...item,
++        erp_campus_id: finalId,
++        campus_name: item?.label ?? '',
++        label: item?.label ?? '',
++      };
++    });
+   } catch (error) {
+     console.warn('Campuses endpoint failed');
+     return [];
+@@ -541,27 +578,35 @@ export const getCampuses = async () => {
+ 
+ export const getDepartments = async (campusId) => {
+   try {
+-    const response = await apiClient.post('/departments', { campus_id: campusId });
+-    return response.data;
++    if (!campusId) return [];
++    const response = await api_gateway.post('/Protected/Common/getDepartmentByCampusId',{}, {
++      params: { campusId },
++       headers: {
++        Authorization: 'Bearer eyJ6aXAiOiJERUYiLCJhbGciOiJIUzUxMiJ9.eJyrVnJJLElUslKqjlHKTIlRsopRsrQwi1HSiVHKS8xNBQs4e_p6-vr7KIQpeDk6-zvFKNUq6Sh5ugA1AZUCmX5AhUAOmjKgRHFpElxRZmKJkpWhubmZpbGJkZmRjlJqRQFUwMTCzMyoFgDrWCNG.bz5a1Wc1sijcLvK6hbOfLJctOTeGBmycrsnsApj3dkiVIkbsNefwT270rMN4lH6cZzETW-ymi4wrtdMjndln3w',
++        __campus_ids: '2,4,1,5,6,3,7'
++      }
++    });
++    const departments = Array.isArray(response.data)
++      ? response.data
++      : Array.isArray(response.data?.dto)
++        ? response.data.dto
++        : [];
++    return departments.map((item) => {
++      const numericId = Number.parseInt(item?.value, 10);
++      const finalId = Number.isNaN(numericId) ? item?.value : numericId;
++      return {
++        ...item,
++        erp_department_id: finalId,
++        department_name: item?.label ?? '',
++        label: item?.label ?? '',
++      };
++    });
+   } catch (error) {
+     console.warn('Departments endpoint failed');
+     return [];
+   }
+ };
+ 
+-/**
+- * Fetch all campus-department mappings to resolve erp_campus_department_mapping_id ΓåÆ names.
+- */
+-export const getCampusDeptMappings = async () => {
+-  try {
+-    const response = await apiClient.post('/campus-dept-mappings', {});
+-    return response.data;
+-  } catch (error) {
+-    console.warn('Campus-dept mappings endpoint failed');
+-    return [];
+-  }
+-};
+-
+ export const getParameters = async () => {
+   try {
+     const response = await apiClient.post('/parameters', {});
+@@ -612,4 +657,4 @@ export const login = async (userId, password) => {
+   }
+ };
+ 
+-export default apiClient;
+\ No newline at end of file
++export default apiClient;
