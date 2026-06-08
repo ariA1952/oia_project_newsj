@@ -10,6 +10,8 @@ venv/
 /backend/database.py
 /backend/auth.py
 /backend/seed_data.py
+/backend/config.py
+/backend/mou_seed_active.py
 
 # Migration scripts that may contain DB credentials
 migrate_add_*.py
@@ -38,3 +40,4 @@ __pycache__/
 # Frontend
 frontend/node_modules/
 frontend/dist/
+
