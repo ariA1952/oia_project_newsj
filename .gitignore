@@ -1,0 +1,40 @@
+# Python virtual environments
+venv/
+.venv/
+
+# Environment variable files
+.env
+.env.*
+
+# Ignore database config and credentials stored in source
+/backend/database.py
+/backend/auth.py
+/backend/seed_data.py
+
+# Migration scripts that may contain DB credentials
+migrate_add_*.py
+
+# Uploaded user files
+uploads/
+
+# Secrets, keys and certificates
+*.pem
+*.key
+*.crt
+credentials.json
+
+# IDE and system files
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+
+# Logs
+*.log
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
